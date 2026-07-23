@@ -1,0 +1,6 @@
+{
+  "name": "DIRPA - Discover Your Path",
+  "description": "An AI-powered academic and career guidance platform designed to help students explore, navigate, and choose their ideal educational pathways with interactive roadmaps, alumni insights, and intelligent mentorship support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
