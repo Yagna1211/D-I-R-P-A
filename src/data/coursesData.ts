@@ -192,42 +192,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Defense Officer'
     ],
     nodePosition: { x: 25, y: 22 },
-    alumniInsights: [
-      {
-        id: 'alumni_alex',
-        name: 'Alex Mercer',
-        role: 'Software Architect at JIO',
-        avatar: '👨‍💻',
-        institution: 'JNTU Kakinada (Direct Lateral Entry via AP ECET)',
-        yearCompleted: '2021',
-        experience: 'Completed my Diploma in GMR Polytechnic, Kakinada with 9.2 GPA, and cracked ECET Rank 74, which allowed me to enter JNTU Civil/CSE in the second year. It is a fantastic pathway for students who want practical hands-on experience before the B.Tech grind. Skipping 11th and 12th board stresses gave me intense laboratory strength.',
-        advice: 'For Polytechnic students trying the AP ECET lateral path, start practicing engineering math and CS fundamentals right from your 3rd semester. Top colleges only take rank holders below 150.',
-        rating: 5,
-        timeline: [
-          { year: '2015', title: 'Started Comp Eng Diploma', description: 'Joined Government Polytechnic, Vijayawada after 10th', type: 'education' },
-          { year: '2018', title: 'AP ECET Rank 74', description: 'Topped the district and secured lateral admission into 2nd year B.Tech at JNTU Kakinada', type: 'milestone' },
-          { year: '2021', title: 'Graduated B.Tech with Honours', description: 'Acquired core software algorithms knowledge; recruited by Tech Mahindra', type: 'education' },
-          { year: '2025', title: 'Switched to JIO Systems', description: 'Architecting distributed database pipelines for LTE streaming', type: 'career' }
-        ]
-      },
-      {
-        id: 'alumni_deepika',
-        name: 'Dr. Deepika Rao',
-        role: 'General Medicine Resident at AMC',
-        avatar: '👩‍⚕️',
-        institution: 'Andhra Medical College (AMC), Visakhapatnam',
-        yearCompleted: '2020',
-        experience: 'I chose BiPC because I wanted to be a doctor. I completed my Intermediate at Narayana Nellore. The course material is bulky, botany and zoology cellular structures are intensive. But the thrill of clearing NEET and entering AMC is unmatched. Learning clinical diagnosis on live patients taught me what empathy truly means.',
-        advice: 'Practice diagrams daily so they are committed to visual memory. Physics in medical entrance is often ignored by students; cracking the physics section is what gets you the Government medical college seat!',
-        rating: 4.8,
-        timeline: [
-          { year: '2012', title: 'Completed Class 10', description: 'Scored 10.0 GPA and enrolled in BiPC', type: 'education' },
-          { year: '2014', title: 'Cleared NEET-UG (Score 618)', description: 'Gained merit quota seat at Andhra Medical College Vet/MBBS', type: 'milestone' },
-          { year: '2019', title: 'Finished AMC House Surgeoncy', description: 'One-year clinical rotations across general wards, ICU, and pediatrics', type: 'education' },
-          { year: '2023', title: 'Admitted to Post Graduation', description: 'Selected MD General Medicine residency at AMC', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'bipc',
@@ -259,25 +224,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Veterinary Doctor'
     ],
     nodePosition: { x: 25, y: 38 },
-    alumniInsights: [
-      {
-        id: 'alumni_deepika_bipc',
-        name: 'Dr. Deepika Rao',
-        role: 'General Medicine Resident at AMC',
-        avatar: '🥼',
-        institution: 'Andhra Medical College (AMC), Visakhapatnam',
-        yearCompleted: '2020',
-        experience: 'BiPC requires incredible retention and a love for organic life. Do not underestimate chemistry equations. They are high score markers.',
-        advice: 'Never skip cell Biology. Many ignore botany for human systems but cellular processes are heavily asked in NEET. Start biological drawing practice early.',
-        rating: 5,
-        timeline: [
-          { year: '2012', title: 'Entered BiPC Academy', description: 'Chose medical path driven by human physiology', type: 'education' },
-          { year: '2014', title: 'Cleared Medical Entrance (NEET/AIPMT)', description: 'Chose MBBS at AMC Delhi', type: 'milestone' },
-          { year: '2020', title: 'MBBS Completed', description: 'Served clinical residency with high honours', type: 'education' },
-          { year: '2023', title: 'MD Residency', description: 'Resident Specialist handling emergency cardiovascular operations', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'cec',
@@ -309,25 +256,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Economic Advisor'
     ],
     nodePosition: { x: 25, y: 55 },
-    alumniInsights: [
-      {
-        id: 'alumni_emily',
-        name: 'CA Emily Vance',
-        role: 'Audit Manager at Deloitte',
-        avatar: '💼',
-        institution: 'ICAI Member / CEC at Sri Chaitanya Hyderabad',
-        yearCompleted: '2018',
-        experience: 'CEC is an exceptional stream. Accountancy is the language of business. Studying double-entry bookkeeping in intermediate gave me the base to clear CA foundation and inter groups smoothly. Doing B.Com simultaneously helped balance academics with corporate auditing requirements during articleship.',
-        advice: 'Never treat bookkeeping as memorization. Focus on the core principles of journal entries. If your foundation is clear, clearing IPCC will be extremely logical.',
-        rating: 4.9,
-        timeline: [
-          { year: '2012', title: 'Chose CEC stream', description: 'Left science because of a high interest in banking ledger rules', type: 'education' },
-          { year: '2014', title: 'CA CPT Cleared', description: 'Passed Foundation with 172/200 marks, joined B.Com alongside', type: 'milestone' },
-          { year: '2018', title: 'Qualified CA Finals', description: 'Passed both groups of finals in first attempt while training at local audit firm', type: 'education' },
-          { year: '2021', title: 'Audit Manager at Deloitte', description: 'Directing public listing auditing and statutory financial reports', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'polytechnic',
@@ -354,25 +283,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'CAD / CAM Designer'
     ],
     nodePosition: { x: 25, y: 72 },
-    alumniInsights: [
-      {
-        id: 'alumni_sandeep',
-        name: 'Sandeep Kumar',
-        role: 'Associate Electrical Engineer at AP Transco',
-        avatar: '👷',
-        institution: 'Govt Polytechnic, Tirupati (AP ECET Topper)',
-        yearCompleted: '2019',
-        experience: 'Polytechnic is the ultimate shortcut to real engineering. Doing a 3-year diploma in Electrical Engineering taught me how transformers actually operate. In B.Tech, MPC students had good theory, but I topped all machinery lab scores because I had handled real grid boards already in diploma.',
-        advice: 'Never ignore lab sessions! The things you draw in sheets and solder in boards will make you stands out in job placements.',
-        rating: 5,
-        timeline: [
-          { year: '2014', title: 'Joined EEE Diploma', description: 'Cleared POLYCET and picked Govt Polytechnic Tirupati', type: 'education' },
-          { year: '2017', title: 'Lateral Entry (AP ECET)', description: 'Selected for EEE at SVU College of Engineering Tirupati', type: 'milestone' },
-          { year: '2020', title: 'Assistant Engineer Selection', description: 'Cleared state power grid recruitment after rigorous exam', type: 'career' },
-          { year: '2024', title: 'Grid Operations Executive', description: 'Directing substation distribution grids in South AP region', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
 
   // 12th Class Pathways
@@ -405,24 +316,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Cybersecurity Analyst'
     ],
     nodePosition: { x: 75, y: 22 },
-    alumniInsights: [
-      {
-        id: 'alumni_alex_cs',
-        name: 'Alex Mercer',
-        role: 'Software Architect at JIO',
-        avatar: '💻',
-        institution: 'JNTU Kakinada (Direct Lateral Entry via AP ECET)',
-        yearCompleted: '2021',
-        experience: 'Entering B.Tech CSE via lateral entry was a massive advantage. While normal 1st-year students studied chemistry, I came directly in 2nd year and started building coding modules.',
-        advice: 'Focus heavily on Database Indexes and computer networking. Knowing how data moves is critical in backend scaling.',
-        rating: 4.8,
-        timeline: [
-          { year: '2018', title: 'Joined JNTU CSE', description: 'Cracked AP ECET Rank 74, direct second year admission', type: 'education' },
-          { year: '2021', title: 'Placed at Tech Mahindra', description: 'Hired during site coding round', type: 'milestone' },
-          { year: '2023', title: 'Lead Script Programmer', description: 'Migrated legacy relational structures to distributed databases', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'medicine_mbbs',
@@ -453,24 +347,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Clinical Trial Lead'
     ],
     nodePosition: { x: 75, y: 38 },
-    alumniInsights: [
-      {
-        id: 'alumni_deepika_mbbs',
-        name: 'Dr. Deepika Rao',
-        role: 'General Medicine Resident at AMC',
-        avatar: '🩺',
-        institution: 'Andhra Medical College (AMC), Visakhapatnam',
-        yearCompleted: '2020',
-        experience: 'The journey from Narayana nellore to Andhra Medical College was tough but highly rewarding. Medical clinical rotations are your best learning grounds.',
-        advice: 'Never rush. It takes almost 10 years to become a fully stable specialist of your choice. Love the process, not just the title.',
-        rating: 5,
-        timeline: [
-          { year: '2014', title: 'Joined MBBS AMC', description: 'Finished NEET and selected clinical medicine', type: 'education' },
-          { year: '2019', title: 'House Surgeoncy Rotations', description: 'Practicing diagnostics across emergency trauma wards', type: 'milestone' },
-          { year: '2023', title: 'Cardiovascular Residency', description: 'Admitted into Doctor of Medicine MD', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'chartered_accountant',
@@ -501,25 +378,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Tax Practitioner'
     ],
     nodePosition: { x: 75, y: 55 },
-    alumniInsights: [
-      {
-        id: 'alumni_emily_ca',
-        name: 'CA Emily Vance',
-        role: 'Audit Manager at Deloitte',
-        avatar: '💼',
-        institution: 'ICAI Member / CEC at Sri Chaitanya Hyderabad',
-        yearCompleted: '2018',
-        experience: 'Articleship is where you actually learn. Do not buy dummy articleships; select a small/mid tier firm where you get direct client meeting access and file different taxes yourself.',
-        advice: 'Read local income tax laws daily. Regulations change with the Union budget, and keeping track of these amendments is what makes you an expert.',
-        rating: 5,
-        timeline: [
-          { year: '2014', title: 'Enrolled CA IPCC', description: 'Cleared both groups of intermediate IPCC on first try', type: 'education' },
-          { year: '2015', title: 'Began Articleship', description: 'Joined senior firm handling audits for real estate setups', type: 'education' },
-          { year: '2018', title: 'Qualified CA Finals', description: 'Officially registered as Chartered Accountant with ICAI', type: 'milestone' },
-          { year: '2021', title: 'Joined Deloitte India', description: 'Manager for global financial audits and risk assessment', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'bba_management',
@@ -549,25 +408,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Brand Strategist'
     ],
     nodePosition: { x: 75, y: 68 },
-    alumniInsights: [
-      {
-        id: 'alumni_p_saikiran',
-        name: 'P. Sai Kiran',
-        role: 'Operations Consultant at GMR Group',
-        avatar: '🤵',
-        institution: 'Andhra University Commerce School',
-        yearCompleted: '2020',
-        experience: 'I did CEC in intermediate and BBA from AU, Visakhapatnam. BBA is extremely functional! I was heavily active in local management fests which helped me build intense communication and presentation skills.',
-        advice: 'Acquire internships right from your second year. Classroom notes won\'t teach you how actual logistics or consumer sales works.',
-        rating: 4.7,
-        timeline: [
-          { year: '2017', title: 'Enrolled in BBA at AU', description: 'Discovered interest in consumer traffic and logistics', type: 'education' },
-          { year: '2019', title: 'L&T Operations Intern', description: 'Completed internship tracking project equipment logistics', type: 'milestone' },
-          { year: '2020', title: 'Graduated BBA', description: 'Graduated top of my class with marketing honours', type: 'education' },
-          { year: '2024', title: 'Logistics Supervisor at GMR', description: 'Overseeing passenger scheduling and fleet systems at Vizag airport', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'btech_mechanical',
@@ -596,23 +437,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'HVAC Systems Engineer'
     ],
     nodePosition: { x: 80, y: 15 },
-    alumniInsights: [
-      {
-        id: 'alumni_rahul_mech',
-        name: 'Rahul Verma',
-        role: 'Maintenance Lead at Tata Motors',
-        avatar: '🚗',
-        institution: 'SVU College of Engineering, Tirupati',
-        yearCompleted: '2021',
-        experience: 'In SVUCE Mech, handling heavy engines in labs gave me extreme confidence. Modern manufacturing uses fully automated plants.',
-        advice: 'Learn SolidWorks, AutoCAD, and FEA early. Knowing simulation is incredibly helpful in design tasks.',
-        rating: 4.6,
-        timeline: [
-          { year: '2017', title: 'Started ME Program', description: 'Enrolled with state board scholarship', type: 'education' },
-          { year: '2021', title: 'Joined Tata Motors', description: 'Selected during manual coding/systems onsite round', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'btech_ece',
@@ -640,23 +465,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Hardware Systems Architect'
     ],
     nodePosition: { x: 80, y: 30 },
-    alumniInsights: [
-      {
-        id: 'alumni_vikram_ece',
-        name: 'Vikram AD',
-        role: 'Hardware Engineer at Intel Corporation',
-        avatar: '📟',
-        institution: 'JNTU College of Engineering, Hyderabad',
-        yearCompleted: '2020',
-        experience: 'ECE sets up extremely strong math and logic foundations. Understanding how digital signals process in a transistor is pure magic.',
-        advice: 'Do not just sit for software jobs; the chip design industry is growing exponentially and has massive pay scales.',
-        rating: 4.9,
-        timeline: [
-          { year: '2016', title: 'Secured JNTUH Seat', description: 'Passed state exam with outstanding rank', type: 'education' },
-          { year: '2020', title: 'Intel VLSI Hire', description: 'Joined chip physical design validation team', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'medicine_bds',
@@ -684,23 +493,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Public Dental Researcher'
     ],
     nodePosition: { x: 85, y: 45 },
-    alumniInsights: [
-      {
-        id: 'alumni_rashmi_dent',
-        name: 'Dr. Rashmi Naidu',
-        role: 'Consultant Orthodontist',
-        avatar: '🩺',
-        institution: 'NTR University of Health Sciences, Vijayawada',
-        yearCompleted: '2019',
-        experience: 'Dental surgery is a perfect blend of manual precision and medical diagnostics. Seeing patients regain their smile is extremely rewarding.',
-        advice: 'Hone your manual dexterity early. Good tooth crafting needs artist-level finger control.',
-        rating: 4.5,
-        timeline: [
-          { year: '2014', title: 'Joined BDS', description: 'Admitted following NEET-UG healthcare list', type: 'education' },
-          { year: '2019', title: 'Started Sparkle Hub', description: 'Opened a dedicated cosmetic family dental clinic', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'b_pharmacy',
@@ -728,23 +521,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Clinical Trials Supervisor'
     ],
     nodePosition: { x: 80, y: 50 },
-    alumniInsights: [
-      {
-        id: 'alumni_liam_pharm',
-        name: 'Liam Baker',
-        role: 'Drug Quality Auditor at Dr. Reddys Labs',
-        avatar: '💊',
-        institution: 'GITAM Institute of Pharmacy, Visakhapatnam',
-        yearCompleted: '2021',
-        experience: 'Pharmacy is a high-stakes clinical area. Auditing cleanroom production batches leaves zero margin of deviation.',
-        advice: 'GPAT rank is your ticket to supreme central research stipends. Dedicate yourself to pharmacology chemistry.',
-        rating: 4.7,
-        timeline: [
-          { year: '2017', title: 'Admitted B.Pharm', description: 'Began academic and laboratory drug science program', type: 'education' },
-          { year: '2021', title: 'Joined Quality Audits', description: 'Assigned as Cleanroom Chemical Batch Validator', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'bsc_agriculture',
@@ -772,23 +549,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Agri-Business Planner'
     ],
     nodePosition: { x: 70, y: 45 },
-    alumniInsights: [
-      {
-        id: 'alumni_anji_agri',
-        name: 'Anjaneyulu M.',
-        role: 'Agricultural Development Officer',
-        avatar: '🌾',
-        institution: 'ANGRAU Guntur Academic Campus',
-        yearCompleted: '2020',
-        experience: 'Agriculture science blends biochemistry with field economics. Solving local farmers crop infectivity is a deeply rewarding duty.',
-        advice: 'Never study soil chemistry passively. Work directly with agricultural farm blocks on campus.',
-        rating: 4.8,
-        timeline: [
-          { year: '2016', title: 'Enrolled in ANGRAU', description: 'Entered following high rank in Agri-admission codes', type: 'education' },
-          { year: '2020', title: 'State Officer selection', description: 'Selected by government department after competitive civil assessment', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'bca_applications',
@@ -816,23 +577,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Software Testing Engineer'
     ],
     nodePosition: { x: 80, y: 70 },
-    alumniInsights: [
-      {
-        id: 'alumni_ramesh_bca',
-        name: 'Ramesh Reddy',
-        role: 'Web Operations Developer at Tech Mahindra',
-        avatar: '💻',
-        institution: 'Sri Venkateswara University, Tirupati',
-        yearCompleted: '2021',
-        experience: 'BCA focuses cleanly on practical programming. We built full web systems and compiled SQL scripts.',
-        advice: 'Keep testing real API endpoints on GitHub. Self-built apps secure interviews faster than grade cards.',
-        rating: 4.6,
-        timeline: [
-          { year: '2018', title: 'Admitted BCA', description: 'Began computing and networks syllabus at SVU computer labs', type: 'education' },
-          { year: '2021', title: 'IT Systems Induction', description: 'Acquired tech developer seat following database design round', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'integrated_law',
@@ -860,23 +605,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'IP & Copyright Specialist'
     ],
     nodePosition: { x: 60, y: 60 },
-    alumniInsights: [
-      {
-        id: 'alumni_divya_law',
-        name: 'Divya Sree',
-        role: 'Corporate Counsel at ICICI Bank',
-        avatar: '⚖',
-        institution: 'NALSAR University of Law, Hyderabad',
-        yearCompleted: '2019',
-        experience: 'Integrated law is rigorous. Participating in national mock trial moot competitions teaches you how to present legal clauses confidently under pressure.',
-        advice: 'Read company audit sheets and contract files. High-paying law roles are in corporate compliance, which requires solid financial intelligence.',
-        rating: 4.9,
-        timeline: [
-          { year: '2014', title: 'Joined NALSAR Hyderabad', description: 'Secured rank in national CLAT exam list', type: 'education' },
-          { year: '2017', title: 'National Moot court Winner', description: 'Topped IP law mock arguments in Delhi Supreme Court', type: 'milestone' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'nda_defence',
@@ -903,23 +632,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Defense intelligence Analyst'
     ],
     nodePosition: { x: 55, y: 45 },
-    alumniInsights: [
-      {
-        id: 'alumni_capt_harsh',
-        name: 'Major Harsh Wardhan',
-        role: 'Regiment Officer, Indian Army',
-        avatar: '🪖',
-        institution: 'National Defence Academy, Khadakwasla',
-        yearCompleted: '2015',
-        experience: 'NDA is not just an education; it is a rewriting of your character. Waking at 4:30 AM for tactical field drills teaches physical and mental resilience.',
-        advice: 'Build strong general knowledge and a razor-sharp physical stance. Group discussion tasks assess active team coordination, not just loudness.',
-        rating: 5,
-        timeline: [
-          { year: '2011', title: 'Cracked NDA Exam', description: 'Passed written UPSC exam & intensive SSB interview boards', type: 'education' },
-          { year: '2015', title: 'Commissioned Officer', description: 'Graduated from IMA Dehradun as Lieutenant', type: 'milestone' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'b_design',
@@ -947,23 +660,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Creative Director'
     ],
     nodePosition: { x: 55, y: 70 },
-    alumniInsights: [
-      {
-        id: 'alumni_ananya_des',
-        name: 'Ananya S.',
-        role: 'Product UX Designer at Swiggy',
-        avatar: '🎨',
-        institution: 'NID Ahmedabad Graduate',
-        yearCompleted: '2021',
-        experience: 'UX design is about building smooth digital micro-interactions. My B.Des taught me how to study user paint-points and translate them into simple layouts.',
-        advice: 'Create a beautiful online portfolio of your designs. Tech companies care about your live Figma flows, not paper certificates.',
-        rating: 4.8,
-        timeline: [
-          { year: '2017', title: 'Joined NID', description: 'Passed national design evaluation testing rounds', type: 'education' },
-          { year: '2021', title: 'Swiggy UX Internship', description: 'Created new checkout panel interfaces, hired full-time', type: 'milestone' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'bfa_fine_arts',
@@ -991,23 +688,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Digital Storyboard Artist'
     ],
     nodePosition: { x: 50, y: 80 },
-    alumniInsights: [
-      {
-        id: 'alumni_subhash_art',
-        name: 'Subhash Chandra',
-        role: 'Senior Character Illustrator at Ubisoft',
-        avatar: '🎨',
-        institution: 'JNA&FAU Hyderabad Fine Arts School',
-        yearCompleted: '2018',
-        experience: 'My BFA taught me composition, shadow weights, and perspective. Translating classic canvas brush-strokes into gaming engine characters was my main breakthrough.',
-        advice: 'Learn digital design brushes and 3D modeling programs alongside traditional oil paints. The industry is digital.',
-        rating: 4.5,
-        timeline: [
-          { year: '2014', title: 'Joined Fine Arts College', description: 'Submitted custom layout concepts for admission', type: 'education' },
-          { year: '2018', title: 'Ubisoft Asset Designer', description: 'Designing characters for major graphic console titles', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'b_com_hons',
@@ -1035,23 +716,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Commercial Officer'
     ],
     nodePosition: { x: 75, y: 75 },
-    alumniInsights: [
-      {
-        id: 'alumni_nikhil_com',
-        name: 'Nikhil G.',
-        role: 'Investment Analyst at Goldman Sachs',
-        avatar: '📊',
-        institution: 'Loyola College, Chennai',
-        yearCompleted: '2021',
-        experience: 'B.Com Honours teaches you how capital moves in an enterprise. Learning to read real financial balance sheets is an essential capability for banking jobs.',
-        advice: 'Learn Excel modeling formulas and SQL databases. Basic book accounting is all automated now.',
-        rating: 4.7,
-        timeline: [
-          { year: '2018', title: 'Began B.Com', description: 'Enrolled in financial accounting track', type: 'education' },
-          { year: '2021', title: 'Acquired Banking Role', description: 'Secured analyst role during investment bank case study rounds', type: 'milestone' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'merchant_navy',
@@ -1079,23 +744,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Ship Superintendent'
     ],
     nodePosition: { x: 70, y: 30 },
-    alumniInsights: [
-      {
-        id: 'alumni_capt_vinay',
-        name: 'Capt. Vinay Kumar',
-        role: 'Chief Deck Officer, Maersk Line',
-        avatar: '🚢',
-        institution: 'Indian Maritime University, Chennai',
-        yearCompleted: '2014',
-        experience: 'The sea is an intense workspace. Living on deep ocean tankers for 6-months straight teaches unmatched mental self-reliance and weather coordination.',
-        advice: 'Never compromise on maritime physical standards or radar training. The safety of a $100M ship relies on your night-watch calculations.',
-        rating: 5,
-        timeline: [
-          { year: '2010', title: 'Enrolled in IMU', description: 'Cleared IMU-CET and qualified medical checks', type: 'education' },
-          { year: '2014', title: 'First Sea Voyage', description: 'Deck Cadet on container logistics lines crossing Atlantic ocean', type: 'milestone' }
-        ]
-      }
-    ]
+    alumniInsights: []
   },
   {
     id: 'bsc_nursing',
@@ -1123,23 +772,7 @@ export const ACADEMIC_PATHWAYS: AcademicPathway[] = [
       'Health Advisor'
     ],
     nodePosition: { x: 65, y: 50 },
-    alumniInsights: [
-      {
-        id: 'alumni_mary_nurse',
-        name: 'Nurse Mary Joseph',
-        role: 'ICU Charge Nurse at Apollo Hospitals',
-        avatar: '👩‍⚕️',
-        institution: 'St. John\'s College of Nursing, Bangalore',
-        yearCompleted: '2018',
-        experience: 'ICU ward care demands instant clinical judgement. Setting up ventilators, checking dosage lines, and coordinating status directly with lead surgeons is high responsibility.',
-        advice: 'Develop strong clinical empathy. Caring for a patient is as much about psychological comfort as it is about chemical drug charts.',
-        rating: 4.8,
-        timeline: [
-          { year: '2014', title: 'Joined B.Sc Nursing', description: 'Began clinical rotations across medical, surgical wards', type: 'education' },
-          { year: '2018', title: 'Apollo ICU Hire', description: 'Inducted as junior emergency ward clinician', type: 'career' }
-        ]
-      }
-    ]
+    alumniInsights: []
   }
 ];
 

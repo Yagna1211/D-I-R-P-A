@@ -605,6 +605,7 @@ export default function App() {
   // PDF Flowchart export states & references
   const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
   const flowchartRef = React.useRef<HTMLDivElement>(null);
+  const careerFlowchartRef = React.useRef<HTMLDivElement>(null);
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
@@ -844,21 +845,21 @@ export default function App() {
               {/* Clickable PDF download badge inside the flowchart itself */}
               <button
                 type="button"
-                onClick={handleDownloadPDF}
+                onClick={() => exportAcademicRoadmapPDF(flowchartRef.current, selectedPathway?.name)}
                 disabled={isExportingPDF}
                 data-html2canvas-ignore="true"
-                className={`px-3 py-1.5 border-2 border-black text-[9px] font-black uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:bg-red-50 hover:text-red-700 active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 bg-white shrink-0`}
-                title="Click to Download this Flowchart as PDF"
+                className={`px-3 py-1.5 border-2 border-black text-[9px] font-black uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:bg-red-50 hover:text-red-700 active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 bg-white shrink-0 rounded`}
+                title="Click to Download this Flowchart as High-Resolution PDF"
               >
                 {isExportingPDF ? (
                   <>
                     <div className="w-2.5 h-2.5 border-2 border-t-red-600 border-transparent rounded-full animate-spin"></div>
-                    <span className="text-[8.5px]">Saving...</span>
+                    <span className="text-[8.5px]">Exporting...</span>
                   </>
                 ) : (
                   <>
-                    <span>📄</span>
-                    <span>PDF</span>
+                    <Download className="w-3.5 h-3.5 text-red-600" />
+                    <span>Export PDF</span>
                   </>
                 )}
               </button>
@@ -1296,23 +1297,7 @@ export default function App() {
             'Competitive Central/State exam pipelines'
           ],
           nodePosition: { x: 50, y: 50 },
-          alumniInsights: [
-            {
-              id: `alumni_int_${o.code}`,
-              name: `Pranav & Sneha (${o.name} alumni)`,
-              role: 'Graduate Career Advocates',
-              avatar: '🎓',
-              institution: 'Government & Corporate College Advisory Boards',
-              yearCompleted: '2022',
-              experience: `We completed the ${o.name} course ourselves! This stream sets up incredibly powerful logic for further paths in ${o.nextStudies.slice(0, 3).join(', ')}. Try to pick colleges with solid laboratory or practical faculties.`,
-              advice: `Master the core textbook syllabus during class 11, do not leave studying for exams till the last minute. Keep clear notes on each studied topic!`,
-              rating: 4.8,
-              timeline: [
-                { year: '2020', title: `Joined ${o.name} stream`, description: 'Academic commencement under state board guidelines', type: 'education' },
-                { year: '2022', title: 'Completed Board Exams', description: 'Passed with high grade distinctions', type: 'milestone' }
-              ]
-            }
-          ]
+          alumniInsights: []
         };
       }
     }
@@ -1348,23 +1333,7 @@ export default function App() {
             'Piping/Machinery Estimator'
           ],
           nodePosition: { x: 50, y: 50 },
-          alumniInsights: [
-            {
-              id: `alumni_poly_${o.id}`,
-              name: `K. Srinivasa Rao`,
-              role: 'Senior Project Supervisor',
-              avatar: '⚙️',
-              institution: 'State Polytechnic Institute',
-              yearCompleted: '2019',
-              experience: `A polytechnic diploma is 100% practical. While regular intermediate students study theoretical science, we directly execute blueprints, handle machines, and run software. This gives us massive industrial advantages.`,
-              advice: `Focus heavily on the final state entrance test (ECET) for direct entry into B.Tech. It is a golden shortcut!`,
-              rating: 4.9,
-              timeline: [
-                { year: '2016', title: 'Joined Diploma study', description: 'Acquired core mechanical/industrial skills', type: 'education' },
-                { year: '2019', title: 'Completed Diploma standard', description: 'Secured national trade certificates', type: 'milestone' }
-              ]
-            }
-          ]
+          alumniInsights: []
         };
       }
     }
@@ -1399,23 +1368,7 @@ export default function App() {
             'Maintenance Staff specialist'
           ],
           nodePosition: { x: 50, y: 50 },
-          alumniInsights: [
-            {
-              id: `alumni_iti_${idStr}`,
-              name: `Ramesh Kumar`,
-              role: 'Independent Tech Specialist',
-              avatar: '🛠️',
-              institution: 'Government ITI Centre',
-              yearCompleted: '2021',
-              experience: `This vocational trade got me direct employment within 1 year. The learning is extremely focused, tactile and job-ready. No time is wasted on optional theoretical assignments.`,
-              advice: `Complete your 1-year apprenticeship immediately after graduation. That is where you lock in placement opportunities.`,
-              rating: 4.7,
-              timeline: [
-                { year: '2020', title: 'Initiate ITI program', description: 'Intensive workshop training', type: 'education' },
-                { year: '2021', title: 'Secured NTC certification', description: 'Officially credentialed registered specialist', type: 'milestone' }
-              ]
-            }
-          ]
+          alumniInsights: []
         };
       }
     }
@@ -2138,8 +2091,152 @@ export default function App() {
     durationPref: '3-4 Years',
     careerGoal: ''
   });
+  const [subjectInput, setSubjectInput] = useState('');
   const [aiResponse, setAiResponse] = useState<any | null>(null);
   const [aiPresetSelected, setAiPresetSelected] = useState<string | null>(null);
+
+  // Modals for AI Advisor Course Details and Job Description Specs
+  const [selectedCourseModal, setSelectedCourseModal] = useState<any | null>(null);
+  const [selectedJobModal, setSelectedJobModal] = useState<any | null>(null);
+
+  // Helper to ensure full genuine, realistic data for course syllabus, feedback, and jobs
+  const getCourseDetailsWithDefaults = (course: any) => {
+    if (!course) return null;
+    const name = course.name || "Academic Pathway";
+    const duration = course.duration || "3-4 Years";
+    const fees = course.estimatedFees || "₹30,000 - ₹1,80,000 / year";
+    const description = course.description || `A comprehensive academic pathway focused on practical skills, theoretical fundamentals, and career excellence in ${name}.`;
+    const whyFits = course.whyFits || course.whyAlternative || "Aligned with your expressed interests, academic level, and personal career aspirations.";
+
+    // Generate or format syllabus
+    let syllabus = course.syllabus;
+    if (!syllabus || !Array.isArray(syllabus) || syllabus.length === 0) {
+      if (name.toLowerCase().includes("tech") || name.toLowerCase().includes("computer") || name.toLowerCase().includes("engineering")) {
+        syllabus = [
+          {
+            semesterOrYear: "Year 1 (Sem 1 & 2)",
+            title: "Engineering Science & Programming Logic",
+            topics: ["Calculus & Linear Algebra", "Computer Fundamentals & C/Python", "Digital Logic Design", "Engineering Physics"],
+            learningOutcome: "Build baseline algorithmic problem-solving and mathematical logic."
+          },
+          {
+            semesterOrYear: "Year 2 (Sem 3 & 4)",
+            title: "Data Structures & Systems Architecture",
+            topics: ["Data Structures & Algorithms", "Database Management Systems (SQL)", "Object-Oriented Java/C++", "Operating Systems"],
+            learningOutcome: "Design efficient data structures and manage database relational models."
+          },
+          {
+            semesterOrYear: "Year 3 (Sem 5 & 6)",
+            title: "Software Engineering & Microservices",
+            topics: ["Web Application Engineering", "Computer Networks & Security", "Machine Learning & AI Basics", "Agile Methodologies"],
+            learningOutcome: "Build end-to-end full-stack web applications and API integrations."
+          },
+          {
+            semesterOrYear: "Year 4 (Sem 7 & 8)",
+            title: "Cloud Infrastructure & Capstone Project",
+            topics: ["Cloud Architecture (AWS/GCP)", "Distributed Systems & Kubernetes", "Corporate Internship", "Capstone Thesis"],
+            learningOutcome: "Deploy production applications and succeed in corporate tech placements."
+          }
+        ];
+      } else if (name.toLowerCase().includes("design") || name.toLowerCase().includes("ui") || name.toLowerCase().includes("ux")) {
+        syllabus = [
+          {
+            semesterOrYear: "Year 1",
+            title: "Visual Fundamentals & Design Thinking",
+            topics: ["Color Theory & Visual Ergonomics", "Drawing & Form Studies", "User Research Methods", "Typography Principles"],
+            learningOutcome: "Develop visual literacy, empathy, and aesthetic design instincts."
+          },
+          {
+            semesterOrYear: "Year 2",
+            title: "Interaction Design & Figma Wireframing",
+            topics: ["Information Architecture", "Wireframing & Prototyping", "Usability Testing Protocols", "Micro-interactions"],
+            learningOutcome: "Create interactive clickable prototypes and validate with real users."
+          },
+          {
+            semesterOrYear: "Year 3",
+            title: "Design Systems & Frontend Engineering",
+            topics: ["Design Systems & Accessibility", "HTML/CSS/Tailwind UI Styling", "Mobile App Design Patterns", "Product Strategy"],
+            learningOutcome: "Bridge visual design concepts with developer design systems."
+          },
+          {
+            semesterOrYear: "Year 4",
+            title: "Industry Portfolio & Capstone Internship",
+            topics: ["UX Analytics & A/B Testing", "Industry Internship", "Portfolio Case Study Defense", "Design Leadership"],
+            learningOutcome: "Graduate with a job-ready portfolio of high-impact case studies."
+          }
+        ];
+      } else {
+        syllabus = [
+          {
+            semesterOrYear: "Year 1",
+            title: "Foundational Principles & Core Methodologies",
+            topics: ["Introduction to Field Theories", "Quantitative & Qualitative Analysis", "Communication & Ethics", "Core Laboratory / Applied Practice"],
+            learningOutcome: "Establish baseline academic and analytical foundations."
+          },
+          {
+            semesterOrYear: "Year 2",
+            title: "Intermediate Specialization & Applied Skills",
+            topics: ["Advanced Domain Subjects", "Research Methods & Case Studies", "Data Interpretation", "Industry Tools Workshop"],
+            learningOutcome: "Apply theoretical models to real-world domain problems."
+          },
+          {
+            semesterOrYear: "Year 3",
+            title: "Advanced Domain Mastery & Industry Internship",
+            topics: ["Specialized Electives", "Field Work & Corporate Internship", "Project Management", "Final Thesis / Project"],
+            learningOutcome: "Master professional standards and prepare for industry recruitment."
+          }
+        ];
+      }
+    }
+
+    // Genuine feedback from database only; default to empty array if none
+    let feedback = course.feedback && Array.isArray(course.feedback) ? course.feedback : [];
+
+    // Generate or format jobs
+    let jobs = course.jobs;
+    if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
+      const potentials = course.careerPotential || ["Software Engineer", "Product Specialist", "Domain Consultant"];
+      jobs = potentials.map((titleStr: any, idx: number) => {
+        if (typeof titleStr === 'object' && titleStr.responsibilities) {
+          return titleStr; // Already a full job object
+        }
+        const title = typeof titleStr === 'string' ? titleStr : titleStr?.title || "Specialist Role";
+        
+        return {
+          title: title,
+          shortDescription: `Architect, analyze, and drive execution for high-impact projects as a ${title}.`,
+          fullOverview: `As a ${title}, you will be responsible for leading key initiatives, collaborating across multidisciplinary teams, applying advanced technical and domain knowledge, and delivering high-value solutions for organization objectives.`,
+          responsibilities: [
+            `Lead and execute end-to-end domain projects matching corporate quality standards.`,
+            `Analyze requirements, conduct research, and design sustainable operational workflows.`,
+            `Collaborate with cross-functional stakeholders, engineering teams, and executive management.`,
+            `Monitor performance metrics, troubleshoot operational bottlenecks, and drive continuous optimization.`
+          ],
+          requiredSkills: ["Analytical Thinking", "Domain Expertise", "Problem Solving", "Project Management", "Effective Communication"],
+          salaryRange: {
+            entry: "₹5,50,000 - ₹9,50,000 PA ($65,000 USD)",
+            mid: "₹12,00,000 - ₹22,00,000 PA ($110,000 USD)",
+            senior: "₹25,00,000 - ₹48,00,000+ PA ($160,000+ USD)"
+          },
+          growthScope: `High demand across market sectors. Clear promotion path from Junior Associate → Senior Specialist → Team Lead → Executive Director.`,
+          topRecruiters: ["Google", "Microsoft", "TCS", "Deloitte", "Amazon", "Infosys", "Apollo"],
+          recommendedCertifications: ["Professional Industry Certificate", "Global Domain Specialist Certification"]
+        };
+      });
+    }
+
+    return {
+      ...course,
+      name,
+      duration,
+      estimatedFees: fees,
+      description,
+      whyFits,
+      syllabus,
+      feedback,
+      jobs
+    };
+  };
 
   // States for dynamic web course query using AI Web Grounding
   const [aiAdvisorSubTab, setAiAdvisorSubTab] = useState<'planner' | 'explorer'>('planner');
@@ -3101,8 +3198,12 @@ export default function App() {
     }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!flowchartRef.current || !selectedPathway) return;
+  const exportAcademicRoadmapPDF = async (targetElement?: HTMLElement | null, customTitle?: string) => {
+    const element = targetElement || flowchartRef.current || careerFlowchartRef.current;
+    if (!element) {
+      console.warn("No flowchart element found to export.");
+      return;
+    }
     setIsExportingPDF(true);
 
     // Color conversion helper to parse dangerous 'oklch' and 'oklab' styles returned by browsers
@@ -3260,8 +3361,6 @@ export default function App() {
     };
 
     try {
-      const element = flowchartRef.current;
-      
       // Render clean, high resolution canvas using html2canvas
       const canvas = await html2canvas(element, {
         scale: 3, // Premium high-resolution capture
@@ -3270,6 +3369,15 @@ export default function App() {
         logging: false,
         onclone: (clonedDoc) => {
           try {
+            // Expand horizontal scroll containers in clone so full flowchart renders without clipping
+            const scrollables = clonedDoc.querySelectorAll('.overflow-x-auto, .overflow-hidden');
+            scrollables.forEach((s) => {
+              if (s instanceof HTMLElement) {
+                s.style.overflow = 'visible';
+                s.style.maxWidth = 'none';
+              }
+            });
+
             const allElements = clonedDoc.getElementsByTagName('*');
             const win = clonedDoc.defaultView || window;
             for (let i = 0; i < allElements.length; i++) {
@@ -3284,7 +3392,7 @@ export default function App() {
                     style = win.getComputedStyle(el);
                   }
                 } catch (e) {
-                  // getComputedStyle might throw if element is in disconnected or protected frame
+                  // getComputedStyle might throw
                 }
 
                 const colorProps = [
@@ -3340,7 +3448,7 @@ export default function App() {
       const imgScale = contentWidth / imgWidth;
       const totalScaledHeight = imgHeight * imgScale;
 
-      // Define page margins and playable region for multi-page support
+      // Define page margins and printable region for multi-page support
       const topMargin = 22; // Let logo render elegantly at the top
       const bottomMargin = 15;
       const pageHeightLimit = pdfHeight - topMargin - bottomMargin; // 260mm limit per page
@@ -3364,7 +3472,7 @@ export default function App() {
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(8);
         pdf.setTextColor(120, 120, 120);
-        pdf.text('© 2026 DIRPA GUIDANCE SERVICES', pdfWidth / 2, pdfHeight - 8, { align: 'center' });
+        pdf.text('© 2026 DIRPA GUIDANCE SERVICES // ACADEMIC ROADMAP', pdfWidth / 2, pdfHeight - 8, { align: 'center' });
       } else {
         // Multi-page splitting logic
         const pxPageHeight = pageHeightLimit / imgScale;
@@ -3409,19 +3517,25 @@ export default function App() {
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(8);
           pdf.setTextColor(120, 120, 120);
-          pdf.text(`Page ${pageIndex + 1} // DIRPA Career Track`, pdfWidth / 2, pdfHeight - 8, { align: 'center' });
+          pdf.text(`Page ${pageIndex + 1} // DIRPA Academic Roadmap`, pdfWidth / 2, pdfHeight - 8, { align: 'center' });
 
           currentY += sliceHeight;
           pageIndex++;
         }
       }
 
-      pdf.save(`Progression-Flowchart-${selectedPathway.name.replace(/\s+/g, '-')}.pdf`);
+      const rawTitle = customTitle || selectedPathway?.name || (jobQuery ? `Route-${jobQuery}` : 'Academic-Roadmap-Flowchart');
+      const cleanFileName = rawTitle.replace(/[^a-zA-Z0-9_\-]/g, '-');
+      pdf.save(`Academic-Roadmap-${cleanFileName}.pdf`);
     } catch (error) {
-      console.error("Failed to export progression flowchart PDF:", error);
+      console.error("Failed to export academic roadmap PDF:", error);
     } finally {
       setIsExportingPDF(false);
     }
+  };
+
+  const handleDownloadPDF = async () => {
+    await exportAcademicRoadmapPDF(flowchartRef.current);
   };
 
   const toggleSaveAlumni = (alumniId: string) => {
@@ -4770,23 +4884,7 @@ export default function App() {
           'Competitive Central/State exam pipelines'
         ],
         nodePosition: { x: node.x, y: node.y },
-        alumniInsights: [
-          {
-            id: `alumni_int_${o.code}`,
-            name: `Pranav & Sneha (${o.name} alumni)`,
-            role: 'Graduate Career Advocates',
-            avatar: '🎓',
-            institution: 'Government & Corporate College Advisory Boards',
-            yearCompleted: '2022',
-            experience: `We completed the ${o.name} course ourselves! This stream sets up incredibly powerful logic for further paths in ${o.nextStudies.slice(0, 3).join(', ')}. Try to pick colleges with solid laboratory or practical faculties.`,
-            advice: `Master the core textbook syllabus during class 11, do not leave studying for exams till the last minute. Keep clear notes on each studied topic!`,
-            rating: 4.8,
-            timeline: [
-              { year: '2020', title: `Joined ${o.name} stream`, description: 'Academic commencement under state board guidelines', type: 'education' },
-              { year: '2022', title: 'Completed Board Exams', description: 'Passed with high grade distinctions', type: 'milestone' }
-            ]
-          }
-        ]
+        alumniInsights: []
       };
     } else if (node.type === 'polytechnic') {
       mappedPathway = {
@@ -4816,23 +4914,7 @@ export default function App() {
           'Piping/Machinery Estimator'
         ],
         nodePosition: { x: node.x, y: node.y },
-        alumniInsights: [
-          {
-            id: `alumni_poly_${o.id}`,
-            name: `K. Srinivasa Rao`,
-            role: 'Senior Project Supervisor',
-            avatar: '⚙️',
-            institution: 'State Polytechnic Institute',
-            yearCompleted: '2019',
-            experience: `A polytechnic diploma is 100% practical. While regular intermediate students study theoretical science, we directly execute blueprints, handle machines, and run software. This gives us massive industrial advantages.`,
-            advice: `Focus heavily on the final state entrance test (ECET) for direct entry into B.Tech. It is a golden shortcut!`,
-            rating: 4.9,
-            timeline: [
-              { year: '2016', title: 'Joined Diploma study', description: 'Acquired core mechanical/industrial skills', type: 'education' },
-              { year: '2019', title: 'Completed Diploma standard', description: 'Secured national trade certificates', type: 'milestone' }
-            ]
-          }
-        ]
+        alumniInsights: []
       };
     } else {
       mappedPathway = {
@@ -4860,23 +4942,7 @@ export default function App() {
           'Maintenance Staff specialist'
         ],
         nodePosition: { x: node.x, y: node.y },
-        alumniInsights: [
-          {
-            id: `alumni_iti_${node.id}`,
-            name: `Ramesh Kumar`,
-            role: 'Independent Tech Specialist',
-            avatar: '🛠️',
-            institution: 'Government ITI Centre',
-            yearCompleted: '2021',
-            experience: `This vocational trade got me direct employment within 1 year. The learning is extremely focused, tactile and job-ready. No time is wasted on optional theoretical assignments.`,
-            advice: `Complete your 1-year apprenticeship immediately after graduation. That is where you lock in placement opportunities.`,
-            rating: 4.7,
-            timeline: [
-              { year: '2020', title: 'Initiate ITI program', description: 'Intensive workshop training', type: 'education' },
-              { year: '2021', title: 'Secured NTC certification', description: 'Officially credentialed registered specialist', type: 'milestone' }
-            ]
-          }
-        ]
+        alumniInsights: []
       };
     }
 
@@ -6822,11 +6888,9 @@ export default function App() {
               {!isComparing && (
                 <div className="border-2 border-black p-8 bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4">
-                  <span className="text-[10px] uppercase font-bold tracking-widest bg-yellow-100 border border-black px-2 py-1">
-                    System Token: Active
-                  </span>
+          
                 </div>
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">DIRPA Personal Guidance Hub</p>
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">DIRPA Personal Guidance</p>
                 <h2 className="text-4xl md:text-5xl font-light font-serif italic not-italic leading-[1.1] mb-2 text-[#1A1A1A]">
                   Welcome, <span className="font-sans font-black not-italic text-black">{user.name}</span>.
                 </h2>
@@ -6840,11 +6904,8 @@ export default function App() {
                 {/* Instant personalized summary tags */}
                 {user.role === 'student' && user.interests.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2 items-center">
-                    <span className="text-[10px] uppercase font-black text-gray-400">My Interests:</span>
-                    {user.interests.map(i => (
-                      <span key={i} className="text-[10px] font-bold bg-gray-100 border border-black px-2 py-0.5">{i}</span>
-                    ))}
-                    <button 
+                    
+                                      <button 
                       onClick={() => setAiModalOpen(true)}
                       className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-tight flex items-center ml-2"
                     >
@@ -7222,7 +7283,7 @@ export default function App() {
                             </div>
                             <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">Search by Job Name?</h4>
                             <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
-                              Type in your dream role, e.g., **Software Engineer**, **Doctor**, or **Chartered Accountant** to map backwards and find the qualifying courses and progression flowcharts.
+                              Type in your dream role, e.g., Software Engineer, Doctor, or Chartered Accountant to map backwards and find the qualifying courses and progression flowcharts.
                             </p>
                           </div>
                           
@@ -7245,7 +7306,7 @@ export default function App() {
                             </div>
                             <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">Search by Class?</h4>
                             <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
-                              Select pathways based on classes. Simply pick whether you completed **Class 10th** or **Class 12th** to explore interactive educational spider-nest maps.
+                              Select pathways based on classes. Simply pick whether you completed Class 10th or Class 12th to explore educational maps.
                             </p>
                           </div>
 
@@ -7698,18 +7759,41 @@ export default function App() {
                             >
                               {/* Left Column: Flowchart representing ALL eligible routes side-by-side (Col-span-7) */}
                               <motion.div variants={itemVariants} className="lg:col-span-7 space-y-6">
-                                <div className="border-2 border-black bg-stone-50 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left space-y-6 relative overflow-hidden">
+                                <div ref={careerFlowchartRef} className="border-2 border-black bg-stone-50 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left space-y-6 relative overflow-hidden">
                                   
-                                  <div className="border-b border-black/10 pb-4">
-                                    <span className="text-[10px] font-mono font-black text-blue-700 uppercase block mb-1">
-                                      // DYNAMIC PATHWAY CONNECTOR CANVAS
-                                    </span>
-                                    <h4 className="text-xl font-display font-black uppercase text-black">
-                                      🗺️ Educational Route Flowchart
-                                    </h4>
-                                    <p className="text-xs text-stone-500 mt-1">
-                                      Follow the arrows to trace all combinations. Click on any box to view its full 100% course curriculum and advisory boards!
-                                    </p>
+                                  <div className="border-b border-black/10 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <div>
+                                      <span className="text-[10px] font-mono font-black text-blue-700 uppercase block mb-1">
+                                        // DYNAMIC PATHWAY CONNECTOR CANVAS
+                                      </span>
+                                      <h4 className="text-xl font-display font-black uppercase text-black">
+                                        🗺️ Educational Route Flowchart
+                                      </h4>
+                                      <p className="text-xs text-stone-500 mt-1">
+                                        Follow the arrows to trace all combinations. Click on any box to view its full 100% course curriculum and advisory boards!
+                                      </p>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => exportAcademicRoadmapPDF(careerFlowchartRef.current, `Route-${jobQuery || 'Flowchart'}`)}
+                                      disabled={isExportingPDF}
+                                      data-html2canvas-ignore="true"
+                                      className="px-3.5 py-2 border-2 border-black text-[10px] font-black uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:bg-red-50 hover:text-red-700 active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 cursor-pointer flex items-center gap-1.5 bg-white shrink-0 rounded"
+                                      title="Export Flowchart as High-Resolution PDF"
+                                    >
+                                      {isExportingPDF ? (
+                                        <>
+                                          <div className="w-3 h-3 border-2 border-t-red-600 border-transparent rounded-full animate-spin"></div>
+                                          <span>Exporting...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Download className="w-3.5 h-3.5 text-red-600" />
+                                          <span>Export PDF</span>
+                                        </>
+                                      )}
+                                    </button>
                                   </div>
 
                                   <div className="space-y-8 flex flex-col items-center">
@@ -8860,7 +8944,7 @@ export default function App() {
                   </button>
 
                   <p className="text-xs text-stone-500 dark:text-zinc-400 leading-normal">
-                    Evaluate and analyze subjects, tuition offsets, semester modules, and graduation placements side-by-side. Click the action button above to launch the 100% full-screen comparative advisor board!
+                    Evaluate and analyze subjects, tuition offsets, semester modules, and graduation placements side-by-side.
                   </p>
                 </div>
               </div>
@@ -8898,42 +8982,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* AI PERSISTENCE WIDGET */}
-              <div className="bg-black text-white p-6 relative overflow-hidden shadow-[6px_6px_0px_0px_rgba(10,10,10,0.15)]">
-                <div className="absolute top-0 right-0 p-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse border border-white"></div>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400 font-mono mb-2 block">
-                  Intelligent Guidance System
-                </span>
-                
-                <h3 className="text-xl font-display font-black uppercase leading-tight mb-2">
-                  Smart AI Personalized Pathways Recommendation
-                </h3>
-
-                <p className="text-xs leading-relaxed opacity-80 mb-6">
-                  Provide your completed class, core strengths, career intent, and budget bracket to allow our AI engine to compile tailored higher education nodes.
-                </p>
-
-                <button 
-                  onClick={() => { setSelectedNav('ai-advisor'); setCurrentView('ai-advisor'); }}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-none border-2 border-white text-xs font-black uppercase tracking-widest transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
-                >
-                  Configure AI recommendation
-                </button>
-              </div>
-
-              {/* Quick Knowledge Tip Box */}
-              <div className="border-2 border-black p-6 bg-amber-50">
-                <h5 className="text-xs font-black uppercase mb-2 flex items-center gap-1.5 text-amber-800">
-                  <Award className="w-4.5 h-4.5" /> High-impact Advice Tip
-                </h5>
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  "Intermediate MPC students who wish to bypass generic classroom studies can register for a Polytechnic Diploma. By completing 3 years, you get direct second-year lateral admission in engineering colleges."
-                </p>
-                <p className="text-[10px] text-amber-700 text-right mt-2 font-bold">— Kshitij Kumar, RRB Overseer</p>
-              </div>
-
+              
             </div>
             )}
 
@@ -9315,17 +9364,17 @@ export default function App() {
                             </h3>
                             <div className="grid grid-cols-2 gap-4 font-mono text-xs">
                               <div className="bg-stone-50 p-2.5 border border-stone-200">
-                                <span className="font-bold text-stone-550 block uppercase text-[8.5px] tracking-wider">// DURATION</span>
+                                <span className="font-bold text-stone-550 block uppercase text-[8.5px] tracking-wider">DURATION</span>
                                 <strong className="text-black text-sm">{selectedSpecCourse.duration}</strong>
                               </div>
                               <div className="bg-stone-50 p-2.5 border border-stone-200">
-                                <span className="font-bold text-stone-550 block uppercase text-[8.5px] tracking-wider">// COMPLEXITY DIFFICULTY</span>
+                                <span className="font-bold text-stone-550 block uppercase text-[8.5px] tracking-wider">COMPLEXITY DIFFICULTY</span>
                                 <strong className="text-purple-600 font-extrabold text-sm uppercase">{selectedSpecCourse.difficulty}</strong>
                               </div>
                             </div>
 
                             <div className="space-y-2 pt-1">
-                              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block tracking-wider">// Key Focus Academics Subjects:</span>
+                              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block tracking-wider">Key Focus Academics Subjects:</span>
                               <div className="space-y-1.5 text-xs text-stone-700 font-semibold pl-1.5">
                                 {selectedSpecCourse.keyFocusAreas.map((area, index) => (
                                   <div key={index} className="flex gap-2 items-center">
@@ -9342,7 +9391,7 @@ export default function App() {
                             <h3 className="text-base font-display font-black uppercase text-black border-b border-stone-200 pb-2 flex items-center gap-1.5">
                               <MessageSquare className="w-4 h-4 text-purple-600" /> Member Feedback (Course Insights)
                             </h3>
-                            <p className="text-xs text-neutral-500 font-mono italic">// Verified alumni and graduate feedbacks on the syllabus & pathway:</p>
+                            <p className="text-xs text-neutral-500 font-mono italic">Verified alumni and graduate feedbacks on the syllabus & pathway:</p>
                             
                             <div className="space-y-4">
                               {(() => {
@@ -9350,7 +9399,7 @@ export default function App() {
                                   return (
                                     <div className="text-center py-8 flex flex-col items-center justify-center gap-2">
                                       <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                                      <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">// Loading course comments...</span>
+                                      <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">Loading course comments...</span>
                                     </div>
                                   );
                                 }
@@ -9358,7 +9407,7 @@ export default function App() {
                                 if (matchedFeedbacks.length === 0) {
                                   return (
                                     <div className="text-center py-8">
-                                      <span className="text-[10px] font-mono text-stone-400">// No database insights submitted for this branch yet.</span>
+                                      <span className="text-[10px] font-mono text-stone-400">No database insights submitted for this branch yet.</span>
                                     </div>
                                   );
                                 }
@@ -9489,9 +9538,9 @@ export default function App() {
                             {/* Inline Alumni Feedback Form */}
                             {user?.role === 'alumni' && (
                               <div className="mt-6 border-t-2 border-black/15 pt-5 space-y-3">
-                                <span className="text-[9.5px] font-mono font-black text-[#8B5CF6] uppercase block tracking-wider">// alumni rapid insight desk</span>
+                                <span className="text-[9.5px] font-mono font-black text-[#8B5CF6] uppercase block tracking-wider">alumni rapid insight desk</span>
                                 <h4 className="text-xs font-black uppercase text-black">Submit Your Feedback for {selectedSpecCourse.name}</h4>
-                                <p className="text-[10px] text-gray-400 font-mono italic">// Your insight will be saved directly and linked to this specific course.</p>
+                                <p className="text-[10px] text-gray-400 font-mono italic">Your insight will be saved directly and linked to this specific course.</p>
                                 
                                 <div className="space-y-2">
                                   <div>
@@ -9554,7 +9603,7 @@ export default function App() {
                         {/* Right column - Direct jobs map */}
                         <div className="lg:col-span-7 p-6 md:p-8 space-y-6 text-left">
                           <div className="bg-amber-50 border-2 border-black p-4 text-black text-xs space-y-1 rounded-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            <span className="font-mono font-bold block uppercase mb-1 text-amber-800">// 💻 LINKED CAREERS TRACKER</span>
+                            <span className="font-mono font-bold block uppercase mb-1 text-amber-800">💻 LINKED CAREERS TRACKER</span>
                             <p className="text-stone-700 font-semibold leading-relaxed">
                               Below is the information about the jobs you can get upon completing this course. Click on any job role to open a full 100% layout details containing exact pay structures, feedbacks and work illustrations!
                             </p>
@@ -9633,7 +9682,7 @@ export default function App() {
                       {/* Title panel */}
                       <div className="bg-black text-white p-6 md:p-8 border-b-2 border-black text-left">
                         <span className="text-[10px] uppercase font-bold text-yellow-300 font-mono tracking-widest block mb-1">
-                          Graduate Course Focus // Specialization Finder
+                          Graduate Course Focus - Specialization Finder
                         </span>
                         <div className="flex flex-wrap items-center justify-between gap-4">
                           <div>
@@ -9655,7 +9704,7 @@ export default function App() {
                         {/* Branches List */}
                         <div className="lg:col-span-8 p-6 md:p-8 space-y-6 text-left">
                           <div className="bg-emerald-50 border-2 border-black p-4 text-black text-xs rounded-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            <span className="font-mono font-bold block uppercase mb-1 text-emerald-800">// SPECIALIZATION ROADMAPS AVAILABLE:</span>
+                            <span className="font-mono font-bold block uppercase mb-1 text-emerald-800">SPECIALIZATION ROADMAPS AVAILABLE:</span>
                             Select a custom discipline below to review key academic subjects, student course feedback, and high payout salaries.
                           </div>
 
@@ -9694,7 +9743,7 @@ export default function App() {
                                     <div className="mt-5 border-t border-dashed border-stone-200 pt-4 space-y-3">
                                       <div>
                                         <span className="text-[8.5px] font-mono font-black block uppercase tracking-wider text-slate-500 mb-1">
-                                          // Focus subjects highlight:
+                                          Focus subjects highlight:
                                         </span>
                                         <div className="flex flex-wrap gap-1">
                                           {course.keyFocusAreas.slice(0, 2).map((area, idx) => (
@@ -9745,7 +9794,7 @@ export default function App() {
                       {/* Standalone 100% full-screen title panel */}
                       <div className="bg-black text-white p-6 md:p-8 border-b-2 border-black text-left">
                         <span className="text-[10px] uppercase font-bold text-yellow-300 font-mono tracking-widest block mb-1">
-                          Graduation Path Funnel // Interactive Stream Link
+                          Graduation Path Funnel - Interactive Stream Link
                         </span>
                         <h2 className="text-3xl md:text-4xl font-display font-black uppercase">
                           Eligible Graduation Pathways for {getStreamKey(selectedPathway.name) === 'MPC' ? 'MPC Standard' : getStreamKey(selectedPathway.name) === 'BiPC' ? 'BiPC Standard' : getStreamKey(selectedPathway.name) === 'MEC_CEC' ? 'CEC / MEC Accountancy' : getStreamKey(selectedPathway.name) === 'POLY' ? 'Polytechnic Engineering' : selectedPathway.name}
@@ -9761,7 +9810,7 @@ export default function App() {
                         {/* Left Workspace (Choices Grid - 8 cols) */}
                         <div className="lg:col-span-8 p-6 md:p-8 space-y-6 text-left">
                           <div className="bg-emerald-50 border-2 border-black p-4 text-black text-xs rounded-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            <span className="font-mono font-bold block uppercase mb-1 text-emerald-800">// ADVISOR ELIGIBILITY MAPPING RULE:</span>
+                            <span className="font-mono font-bold block uppercase mb-1 text-emerald-800">ADVISOR ELIGIBILITY MAPPING RULE:</span>
                             These university courses are strictly verified and locked down based on your underlying foundation stream: <strong className="underline">{selectedPathway.name}</strong>.
                           </div>
 
@@ -9810,7 +9859,7 @@ export default function App() {
                                     <div className="mt-5 border-t border-dashed border-black/20 pt-4 space-y-3">
                                       <div>
                                         <span className="text-[8.5px] font-mono font-black block uppercase tracking-wider mb-2 text-slate-500">
-                                          // Target career job roles:
+                                          Target career job roles:
                                         </span>
                                         <div className="flex flex-wrap gap-1.5">
                                           {degree.careers.map((career) => (
@@ -9863,7 +9912,7 @@ export default function App() {
                   <div className="bg-black text-white p-6 md:p-8 border-b-2 border-black flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-yellow-300 font-mono tracking-widest">
-                        Selected Branch: {selectedPathway.level} Level // {selectedPathway.category}
+                        Selected Branch: {selectedPathway.level} Level - {selectedPathway.category}
                       </span>
                       <h2 className="text-3xl md:text-4xl font-display font-black uppercase mt-1">
                         {selectedPathway.name}
@@ -9927,7 +9976,7 @@ export default function App() {
                       
                       {/* Duration & Eligibility details */}
                       <div className="border-2 border-black p-4 bg-zinc-50 text-black">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-blue-700 mb-3 font-mono">// Duration & Eligibility</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-blue-700 mb-3 font-mono">Duration & Eligibility</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="border border-black p-3 bg-white">
                             <span className="text-[10px] uppercase font-bold tracking-tight text-zinc-700 font-mono">Duration</span>
@@ -9946,7 +9995,7 @@ export default function App() {
 
                       {/* Highlighted Core Subjects */}
                       <div className="border-2 border-black p-4 bg-emerald-50/40 text-black">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-700 mb-3 font-mono">// Highlighted Core Subjects</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-emerald-700 mb-3 font-mono">Highlighted Core Subjects</h4>
                         <div className="flex flex-wrap gap-2">
                           {selectedPathway.subjects.map(subject => (
                             <span key={subject} className="text-xs font-bold px-3.5 py-1.5 bg-emerald-100/70 border border-black text-black">
@@ -9958,7 +10007,7 @@ export default function App() {
 
                       {/* Higher Education Pathways in Detail */}
                       <div className="border-2 border-black p-4 bg-amber-50/40 text-black">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-amber-700 mb-2 font-mono">// Higher Education Options</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-amber-700 mb-2 font-mono">Higher Education Options</h4>
                         <ul className="space-y-1.5 text-xs">
                           {selectedPathway.higherEducationOptions.map((opt, i) => (
                             <li key={i} className="flex items-start gap-2 py-0.5">
@@ -10672,22 +10721,59 @@ export default function App() {
 
                     {/* Interests tags selection */}
                     <div>
-                      <label className="block text-xs font-black uppercase tracking-wider mb-2 text-black">What subjects are of interest? (Select multiple)</label>
-                      <div className="flex flex-wrap gap-2">
-                        {['Mathematics', 'Coding & Computer Science', 'Physics & Chemistry', 'Biology & Human Anatomy', 'Financial Accounting', 'Corporate Commerce', 'Visual Design', 'Modern Aesthetics', 'Social Work', 'History & Civics'].map(interest => {
-                          const isSel = aiInputs.interests.includes(interest);
-                          return (
-                            <button
-                              key={interest}
-                              type="button"
-                              onClick={() => toggleInterest(interest)}
-                              className={`text-[10px] font-black uppercase px-3 py-1.5 border-2 border-black transition-all ${isSel ? 'bg-black text-yellow-300 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black hover:bg-zinc-100'}`}
-                            >
-                              {interest} {isSel && '✓'}
-                            </button>
-                          );
-                        })}
+                      <label className="block text-xs font-black uppercase tracking-wider mb-2 text-black">What subjects are of interest?</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          placeholder="Type a subject and hit Enter..."
+                          value={subjectInput}
+                          onChange={(e) => setSubjectInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = subjectInput.trim();
+                              if (val && !aiInputs.interests.includes(val)) {
+                                setAiInputs({ ...aiInputs, interests: [...aiInputs.interests, val] });
+                                setSubjectInput('');
+                              }
+                            }
+                          }}
+                          className="w-full border-2 border-black px-3 py-2 text-xs focus:outline-none focus:bg-yellow-50 text-black placeholder-zinc-400 font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = subjectInput.trim();
+                            if (val && !aiInputs.interests.includes(val)) {
+                              setAiInputs({ ...aiInputs, interests: [...aiInputs.interests, val] });
+                              setSubjectInput('');
+                            }
+                          }}
+                          className="px-3 py-2 bg-black text-white text-xs font-black uppercase border-2 border-black hover:bg-zinc-800 transition-colors"
+                        >
+                          Add
+                        </button>
                       </div>
+                      {aiInputs.interests.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {aiInputs.interests.map((interest) => (
+                            <span
+                              key={interest}
+                              className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 border-2 border-black bg-black text-yellow-300 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+                            >
+                              <span>{interest}</span>
+                              <button
+                                type="button"
+                                onClick={() => setAiInputs({ ...aiInputs, interests: aiInputs.interests.filter(i => i !== interest) })}
+                                className="text-yellow-300 hover:text-white font-bold ml-0.5 cursor-pointer"
+                                title="Remove subject"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Desired Duration */}
@@ -10734,7 +10820,7 @@ export default function App() {
                       onClick={handleFetchAiRecommendation}
                       className="w-full py-4 mt-4 bg-orange-600 hover:bg-orange-700 text-white border-2 border-black text-xs font-black uppercase tracking-widest transition-transform hover:-translate-y-0.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
                     >
-                      Analyze & Advise Me via Smart AI
+                      Submit
                     </button>
                   </div>
 
@@ -10769,52 +10855,77 @@ export default function App() {
                   )}
 
                   {!isAiLoading && aiResponse && (
-                    <div className="space-y-6">
-                      <div className="border-l-4 border-emerald-500 pl-4 py-2">
-                        <h4 className="text-lg font-black uppercase text-emerald-800">Generated Career Route Options:</h4>
+                    <div className="space-y-5">
+                      <div className="border-l-4 border-emerald-600 pl-3 py-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-black uppercase text-emerald-900 tracking-wider">Recommended Academic Courses:</h4>
+                          <p className="text-[11px] text-stone-600 font-medium mt-0.5">Click any course name to open syllabus, alumni feedback & potential career jobs</p>
+                        </div>
                       </div>
 
-                      {aiResponse.recommendedPaths?.map((path: any, index: number) => (
-                        <div key={index} className="border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-                          <span className="text-[10px] uppercase font-black tracking-tight text-blue-600">Suggested route option {index + 1}</span>
-                          <h4 className="text-md font-black uppercase mt-1 text-black">{path.name}</h4>
-                          <p className="text-xs text-stone-700 mt-2 leading-relaxed italic border-l-2 border-stone-200 pl-3">
-                            <strong>Why it matches your interests:</strong> "{path.whyFits}"
-                          </p>
-                          
-                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono font-bold text-gray-600 border-t border-b border-black/10 py-3">
-                            <div>⏱ Duration constraint: <span className="text-black">{path.duration || 'Flexible length'}</span></div>
-                            <div>💰 Est. Average Fees: <span className="text-black">{path.estimatedFees || 'Subsidized state rates'}</span></div>
-                          </div>
-
-                          <div className="mt-4">
-                            <span className="block text-[10px] font-black uppercase text-gray-500 mb-2">Core study timeline milestones:</span>
-                            <div className="space-y-2">
-                              {path.timeline?.map((item: string, i: number) => (
-                                <p key={i} className="text-xs text-zinc-800 leading-normal flex items-start gap-2 font-mono">
-                                  <span className="text-emerald-600">✔</span> <span>{item}</span>
-                                </p>
-                              ))}
+                      <div className="space-y-3">
+                        {aiResponse.recommendedPaths?.map((path: any, index: number) => (
+                          <div 
+                            key={index}
+                            onClick={() => setSelectedCourseModal(getCourseDetailsWithDefaults(path))}
+                            className="group border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:bg-yellow-50/80 hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-blue-100 text-blue-900 border border-black">
+                                  Suggested Option #{index + 1}
+                                </span>
+                                <span className="text-[10px] font-mono font-bold text-stone-500">
+                                  ⏱ {path.duration || '3-4 Years'} • 💰 {path.estimatedFees || 'Standard Tuition'}
+                                </span>
+                              </div>
+                              <h4 className="text-base font-black uppercase text-black group-hover:text-blue-700 transition-colors flex items-center gap-2">
+                                <span>🎓 {path.name}</span>
+                              </h4>
+                              <p className="text-xs text-stone-600 line-clamp-1 italic">
+                                "{path.description || path.whyFits}"
+                              </p>
                             </div>
-                          </div>
 
-                          <div className="mt-4 pt-3 border-t border-dashed border-gray-200">
-                            <span className="block text-[10px] font-black uppercase text-gray-500">Key Professional designations:</span>
-                            <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mt-1.5">{path.careerPotential?.join(' // ')}</p>
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCourseModal(getCourseDetailsWithDefaults(path));
+                              }}
+                              className="shrink-0 px-3.5 py-2 border-2 border-black bg-black text-white text-[10px] font-black uppercase tracking-widest group-hover:bg-blue-600 transition-colors flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                            >
+                              <span>Inspect Details</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
 
                       {/* Alternatives Display */}
                       {aiResponse.alternatives && aiResponse.alternatives.length > 0 && (
-                        <div className="border-2 border-black bg-amber-50 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-fade-in">
-                          <span className="text-xs font-black uppercase tracking-wider text-amber-900 block mb-3">Alternative Streams to Consider:</span>
-                          <div className="space-y-4">
+                        <div className="mt-6 pt-5 border-t-2 border-dashed border-stone-300 space-y-3">
+                          <h5 className="text-xs font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                            <span>💡 Alternative Academic Streams:</span>
+                          </h5>
+                          <div className="space-y-2.5">
                             {aiResponse.alternatives.map((alt: any, i: number) => (
-                              <div key={i} className="text-xs">
-                                <p className="font-bold underline uppercase text-black">{alt.name}</p>
-                                <p className="text-stone-700 leading-relaxed mt-1">{alt.description}</p>
-                                <p className="text-stone-500 italic mt-1 font-medium">Why advisor suggests alternative: "{alt.whyAlternative}"</p>
+                              <div 
+                                key={i}
+                                onClick={() => setSelectedCourseModal(getCourseDetailsWithDefaults(alt))}
+                                className="group border-2 border-black bg-amber-50/90 p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:bg-amber-100 hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer flex items-center justify-between gap-3"
+                              >
+                                <div className="space-y-0.5">
+                                  <span className="text-[9px] font-black uppercase text-amber-900">Alternative Option {i + 1}</span>
+                                  <h5 className="text-sm font-black uppercase text-black group-hover:text-amber-900">🎓 {alt.name}</h5>
+                                  <p className="text-xs text-stone-600 line-clamp-1">{alt.description || alt.whyAlternative}</p>
+                                </div>
+                                <button 
+                                  type="button"
+                                  className="shrink-0 text-xs font-black text-amber-950 underline uppercase tracking-tight flex items-center gap-1"
+                                >
+                                  <span>View Details →</span>
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -10823,8 +10934,8 @@ export default function App() {
 
                       {/* Counselor Empathy Advice */}
                       {aiResponse.generalAdvice && (
-                        <div className="border-2 border-black bg-indigo-50 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] leading-relaxed animate-fade-in">
-                          <h4 className="text-xs font-black uppercase tracking-widest text-indigo-900 mb-2">Advisor Empathic Feedback & Guidelines:</h4>
+                        <div className="border-2 border-black bg-indigo-50 p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] leading-relaxed animate-fade-in mt-4">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-indigo-900 mb-1">💬 Counselor Guidance Tip:</h4>
                           <p className="text-xs text-indigo-950 font-medium whitespace-pre-line">{aiResponse.generalAdvice}</p>
                         </div>
                       )}
@@ -11041,7 +11152,7 @@ export default function App() {
             <div className="border-2 border-black dark:border-zinc-700 bg-[#FCFBF8] dark:bg-zinc-900 p-6 md:p-10 flex flex-col md:flex-row gap-8 items-center">
               <div className="flex-1 space-y-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-rose-600 dark:text-rose-455 uppercase tracking-widest block font-mono">// DIRPA FOUNDATION</span>
+                  <span className="text-xs font-black text-rose-600 dark:text-rose-455 uppercase tracking-widest block font-mono">DIRPA FOUNDATION</span>
                 </div>
                 <h1 className="text-4xl md:text-5xl font-display font-black uppercase text-[#1A1A1A] dark:text-[#F3F4F6] tracking-tight leading-none">
                   About DIRPA <br/>
@@ -11094,7 +11205,7 @@ export default function App() {
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed border-black/10 dark:border-white/10 text-[10px] font-mono text-gray-400 uppercase">
-                  // VISUAL DISCOVERY ENGINE
+                  VISUAL DISCOVERY ENGINE
                 </div>
               </div>
 
@@ -11109,7 +11220,7 @@ export default function App() {
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed border-black/10 dark:border-white/10 text-[10px] font-mono text-gray-400 uppercase">
-                  // DIRECT ADVICE COMMUNITY
+                  DIRECT ADVICE COMMUNITY
                 </div>
               </div>
 
@@ -11124,7 +11235,7 @@ export default function App() {
                   </p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed border-black/10 dark:border-white/10 text-[10px] font-mono text-gray-400 uppercase">
-                  // INTELLECTUAL CONSULTANT
+                  INTELLECTUAL CONSULTANT
                 </div>
               </div>
 
@@ -11133,7 +11244,7 @@ export default function App() {
             {/* Meet the Co-founders Section */}
             <div className="border-2 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 md:p-8">
               <div className="border-b-2 border-black dark:border-zinc-700 pb-4 mb-8">
-                <span className="text-xs font-black text-rose-600 dark:text-rose-455 uppercase tracking-widest block font-mono">// TEAM BEHIND DIRPA</span>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-455 uppercase tracking-widest block font-mono">TEAM BEHIND DIRPA</span>
                 <h2 className="text-3xl font-display font-black uppercase text-[#1A1A1A] dark:text-[#F3F4F6] mt-1.0">
                   Meet Our Co-Founders
                 </h2>
@@ -11289,7 +11400,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-6 py-10 transition-colors duration-150">
             {/* Header section with minimal & modern display style */}
             <div className="border-2 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 md:p-8 mb-8">
-              <span className="text-xs font-black text-blue-600 dark:text-cyan-400 uppercase tracking-widest block font-mono">// FORUM & DISCUSSIONS</span>
+              <span className="text-xs font-black text-blue-600 dark:text-cyan-400 uppercase tracking-widest block font-mono">FORUM & DISCUSSIONS</span>
               <h1 className="text-4xl font-display font-black uppercase text-[#1A1A1A] dark:text-[#F3F4F6] mt-1.5 flex items-center gap-3">
                 <span>Alumni Global Comments Board</span>
                 <span className="text-xs bg-emerald-100 dark:bg-emerald-950/40 py-1 px-3 border border-emerald-600 text-emerald-700 dark:text-emerald-400 rounded-full font-mono uppercase font-black tracking-widest animate-pulse h-fit">Live Forum</span>
@@ -11303,7 +11414,7 @@ export default function App() {
               {/* Left Column: Publish Global Course Comment (Cols: 4) */}
               <div className="lg:col-span-4 border-2 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 bg-slate-50">
                 <div className="border-b-2 border-black dark:border-zinc-700 pb-3 mb-5">
-                  <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block font-mono">// Share Your Experience</span>
+                  <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block font-mono">Share Your Experience</span>
                   <h2 className="text-xl font-display font-black uppercase text-[#1A1A1A] dark:text-[#F3F4F6] mt-1">Post a Comment</h2>
                 </div>
 
@@ -11374,7 +11485,7 @@ export default function App() {
               <div className="lg:col-span-8 border-2 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6">
                 <div className="border-b-2 border-black dark:border-zinc-700 pb-3 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <span className="text-[10px] font-black text-blue-600 dark:text-cyan-400 uppercase tracking-widest block font-mono">// Conversations & Student Engagement</span>
+                    <span className="text-[10px] font-black text-blue-600 dark:text-cyan-400 uppercase tracking-widest block font-mono">Conversations & Student Engagement</span>
                     <h2 className="text-xl font-display font-black uppercase text-[#1A1A1A] dark:text-[#F3F4F6] mt-1">Comments Feed</h2>
                   </div>
                   
@@ -11553,7 +11664,7 @@ export default function App() {
 
                             {comment.advice && !isCurrentlyEditing && (
                               <div className="mt-2 bg-yellow-50 dark:bg-zinc-900 border border-dashed border-yellow-300 dark:border-zinc-800 p-2.5 rounded">
-                                <span className="text-[8px] font-black uppercase text-amber-600 block mb-0.5 font-mono">// Survival Hack</span>
+                                <span className="text-[8px] font-black uppercase text-amber-600 block mb-0.5 font-mono">Survival Hack</span>
                                 <p className="text-xs italic font-medium leading-relaxed">"{comment.advice}"</p>
                               </div>
                             )}
@@ -11845,11 +11956,11 @@ export default function App() {
                 {/* Stats indicators grid: Likes and Followers */}
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div className="p-3 border-2 border-black bg-rose-50 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                    <span className="text-[8px] font-mono text-rose-800 uppercase block font-black tracking-widest">// ALUMNI FAVORITES</span>
+                    <span className="text-[8px] font-mono text-rose-800 uppercase block font-black tracking-widest">ALUMNI FAVORITES</span>
                     <span className="text-xl font-display font-black text-rose-700 block mt-0.5">{likesVal} Likes</span>
                   </div>
                   <div className="p-3 border-2 border-black bg-blue-50 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                    <span className="text-[8px] font-mono text-blue-800 uppercase block font-black tracking-widest">// ACTIVE AUDIENCE</span>
+                    <span className="text-[8px] font-mono text-blue-800 uppercase block font-black tracking-widest">ACTIVE AUDIENCE</span>
                     <span className="text-xl font-display font-black text-blue-700 block mt-0.5">{followersVal} Followers</span>
                   </div>
                 </div>
@@ -11893,7 +12004,7 @@ export default function App() {
                 {/* Distilled Strategic Advice Box */}
                 <div className="p-4 bg-orange-50 border-2 border-black text-left relative shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
                   <span className="text-[8px] font-mono font-black text-amber-800 bg-amber-100 border border-black px-1.5 py-0.5 uppercase tracking-wider block w-fit mb-2">
-                    // Distilled Advice
+                    Distilled Advice
                   </span>
                   <p className="text-xs text-stone-800 italic leading-relaxed font-sans">
                     "{selectedAlumni.advice || "Focus on building a core foundational knowledge. Consistent hourly progress is far superior to intensive study sessions near deadlines."}"
@@ -11924,7 +12035,7 @@ export default function App() {
                 {/* Right Side Header Section */}
                 <div className="border-b-4 border-black pb-6 select-none space-y-6">
                   <div>
-                    <span className="text-[10px] font-mono font-black text-[#2563EB] block tracking-widest uppercase">// EDUCATION & CAREER HIGHWAYS</span>
+                    <span className="text-[10px] font-mono font-black text-[#2563EB] block tracking-widest uppercase">EDUCATION & CAREER HIGHWAYS</span>
                     <h2 className="text-4xl font-display font-black uppercase text-black italic">Interactive Professional Timeline</h2>
                     <p className="text-xs text-stone-500 mt-1 max-w-xl leading-relaxed">
                       Explore this advisor's custom career progression nodes, academic specializations, and real-life outcomes from high school to current market positioning.
@@ -11940,7 +12051,7 @@ export default function App() {
                       </div>
                       <div className="relative z-10">
                         <span className="text-[8px] font-mono font-black text-rose-800 bg-rose-100 border border-black px-2 py-0.5 uppercase tracking-wider block w-fit">
-                          // Total Endorsements
+                          Total Endorsements
                         </span>
                         <div className="flex items-baseline gap-2 mt-3">
                           <span className="text-4xl md:text-5xl font-display font-black italic text-rose-600 block leading-tight">
@@ -11963,7 +12074,7 @@ export default function App() {
                       </div>
                       <div className="relative z-10">
                         <span className="text-[8px] font-mono font-black text-blue-800 bg-blue-100 border border-black px-2 py-0.5 uppercase tracking-wider block w-fit">
-                          // Active Audience
+                          Active Audience
                         </span>
                         <div className="flex items-baseline gap-2 mt-3">
                           <span className="text-4xl md:text-5xl font-display font-black italic text-blue-600 block leading-tight">
@@ -12144,21 +12255,59 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider mb-1.5">Primary Interest Fields</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {['Visualization', 'Logic', 'Coding', 'Biology', 'Social Work', 'Aesthetics', 'Finance', 'National Economics'].map(interest => {
-                      const isSel = aiInputs.interests.includes(interest);
-                      return (
-                        <span 
-                          key={interest}
-                          onClick={() => toggleInterest(interest)}
-                          className={`cursor-pointer text-[10px] font-bold px-2.5 py-1 border rounded-xs select-none transition-colors ${isSel ? 'bg-black text-white border-black' : 'bg-stone-50 border-gray-300 text-gray-700 hover:border-black'}`}
-                        >
-                          {interest} {isSel && '✓'}
-                        </span>
-                      );
-                    })}
+                  <label className="block text-[10px] font-black uppercase tracking-wider mb-1.5">What subjects are of interest?</label>
+                  <div className="flex gap-1.5 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Type a subject and hit Enter..."
+                      value={subjectInput}
+                      onChange={(e) => setSubjectInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = subjectInput.trim();
+                          if (val && !aiInputs.interests.includes(val)) {
+                            setAiInputs({ ...aiInputs, interests: [...aiInputs.interests, val] });
+                            setSubjectInput('');
+                          }
+                        }
+                      }}
+                      className="w-full border border-black px-2.5 py-1.5 text-xs focus:outline-none focus:bg-amber-50 text-black placeholder-zinc-400 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = subjectInput.trim();
+                        if (val && !aiInputs.interests.includes(val)) {
+                          setAiInputs({ ...aiInputs, interests: [...aiInputs.interests, val] });
+                          setSubjectInput('');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase border border-black hover:bg-zinc-800 transition-colors shrink-0"
+                    >
+                      Add
+                    </button>
                   </div>
+                  {aiInputs.interests.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {aiInputs.interests.map((interest) => (
+                        <span
+                          key={interest}
+                          className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 border border-black bg-black text-yellow-300"
+                        >
+                          <span>{interest}</span>
+                          <button
+                            type="button"
+                            onClick={() => setAiInputs({ ...aiInputs, interests: aiInputs.interests.filter(i => i !== interest) })}
+                            className="text-yellow-300 hover:text-white font-bold ml-0.5 cursor-pointer"
+                            title="Remove subject"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -12633,6 +12782,426 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ================= 100% FULL-PAGE VIEW 1: COURSE SYLLABUS, FEEDBACK & POTENTIAL JOBS ================= */}
+      {selectedCourseModal && !selectedJobModal && (
+        <div className="fixed inset-0 z-[120] bg-[#FDFBF7] text-black overflow-y-auto flex flex-col min-h-screen w-full animate-fade-in select-text">
+          {/* Top Full-Width Sticky Navigation Header */}
+          <header className="bg-black text-white p-5 md:p-6 border-b-4 border-black sticky top-0 z-50 shadow-md">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setSelectedCourseModal(null)}
+                    className="px-3 py-1.5 text-xs font-mono font-black uppercase bg-stone-800 hover:bg-stone-700 text-white border border-stone-500 transition-colors flex items-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)]"
+                  >
+                    ← Back to Main Dashboard
+                  </button>
+                  <span className="text-[10px] font-mono font-black uppercase tracking-widest bg-emerald-500 text-black px-2.5 py-1">
+                    Course Syllabus Page
+                  </span>
+                  <span className="text-[10px] font-mono text-stone-300">
+                    ⏱ {selectedCourseModal.duration} • 💰 {selectedCourseModal.estimatedFees}
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-4xl font-display font-black uppercase text-white tracking-wide">
+                  🎓 {selectedCourseModal.name}
+                </h1>
+              </div>
+              <button
+                onClick={() => setSelectedCourseModal(null)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white border-2 border-black font-display font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all cursor-pointer shrink-0"
+              >
+                Exit View ✕
+              </button>
+            </div>
+          </header>
+
+          {/* Full Page Content */}
+          <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8 flex-1">
+            
+            {/* Overview & Fit explanation */}
+            <div className="border-2 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-3">
+              <h2 className="text-xs font-black uppercase tracking-wider text-black border-b-2 border-black pb-2 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-600" />
+                Course Overview & Academic Scope
+              </h2>
+              <p className="text-sm text-stone-800 leading-relaxed font-medium">
+                {selectedCourseModal.description}
+              </p>
+              {selectedCourseModal.whyFits && (
+                <div className="bg-emerald-50 border-2 border-emerald-300 p-4 text-xs text-emerald-950 font-semibold italic">
+                  <strong>Why it fits your profile:</strong> "{selectedCourseModal.whyFits}"
+                </div>
+              )}
+            </div>
+
+            {/* 1. Course Syllabus & Curriculum */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+                <h2 className="text-xl font-display font-black uppercase text-black">
+                  1. Detailed Course Syllabus & Curriculum
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {selectedCourseModal.syllabus?.map((sem: any, idx: number) => (
+                  <div key={idx} className="border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                    <span className="text-[10px] font-mono font-black uppercase text-blue-700 bg-blue-50 px-2.5 py-1 border border-blue-200 inline-block">
+                      {sem.semesterOrYear || `Phase ${idx + 1}`}
+                    </span>
+                    <h3 className="text-base font-black uppercase text-black">
+                      {sem.title}
+                    </h3>
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-stone-500 uppercase block">Core Topics & Modules:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sem.topics?.map((topic: string, tIdx: number) => (
+                          <span key={tIdx} className="text-xs font-semibold bg-stone-100 border border-stone-300 px-2.5 py-0.5 text-stone-800">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {sem.learningOutcome && (
+                      <p className="text-xs text-stone-700 font-medium italic border-t border-dashed border-stone-200 pt-3 mt-2">
+                        🎯 <strong>Outcome:</strong> {sem.learningOutcome}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Genuine Alumni Reviews & Student Insights */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                <MessageSquare className="w-6 h-6 text-emerald-600" />
+                <h2 className="text-xl font-display font-black uppercase text-black">
+                  2. Genuine Alumni Reviews & Student Insights
+                </h2>
+              </div>
+
+              {(() => {
+                const realCourseFeedbacks = allDbFeedbacks.filter(f =>
+                  isCourseIdEquivalent(f.courseId, selectedCourseModal.id) ||
+                  isCourseIdEquivalent(f.courseId, selectedCourseModal.code) ||
+                  isCourseIdEquivalent(f.courseId, selectedCourseModal.name)
+                );
+                if (realCourseFeedbacks.length === 0) {
+                  return (
+                    <div className="border-2 border-dashed border-stone-300 bg-white p-8 text-center space-y-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <MessageSquare className="w-8 h-8 text-stone-400 mx-auto" />
+                      <p className="text-xs font-black uppercase tracking-wider text-stone-700">No Genuine Database Reviews Yet</p>
+                      <p className="text-xs text-stone-500 font-medium max-w-md mx-auto">
+                        There are currently no user-submitted reviews for this course in the database.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {realCourseFeedbacks.map((fb: any, fbIdx: number) => (
+                      <div key={fbIdx} className="border-2 border-black bg-amber-50/90 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                        <div className="flex flex-wrap justify-between items-start gap-2">
+                          <div>
+                            <h3 className="text-sm font-black uppercase text-black">{fb.name || fb.authorEmail || "Verified Student/Alumni"}</h3>
+                            <p className="text-xs font-mono text-stone-600">{fb.institutionName || fb.company || "Alumni Contributor"}</p>
+                          </div>
+                          <div className="flex items-center gap-1 bg-yellow-300 border-2 border-black px-2 py-0.5 text-xs font-black">
+                            <span>⭐ {(fb.overallRating || fb.rating || 5).toFixed(1)} / 5</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-stone-800 leading-relaxed italic border-t border-dashed border-stone-300 pt-2 font-medium">
+                          "{fb.feedbackText || fb.experience}"
+                        </p>
+                        {fb.advice && (
+                          <p className="text-[11px] font-bold text-amber-950 bg-amber-200/80 p-2.5 border border-amber-400">
+                            💡 Pro Tip: {fb.advice}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 3. Potential Jobs & Career Pathways */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                <Briefcase className="w-6 h-6 text-purple-600" />
+                <h2 className="text-xl font-display font-black uppercase text-black">
+                  3. Potential Jobs & Career Opportunities
+                </h2>
+              </div>
+              <p className="text-xs text-stone-600 font-medium">
+                Click on any job role below to navigate to its 100% full-page job specification!
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {selectedCourseModal.jobs?.map((job: any, jIdx: number) => (
+                  <div 
+                    key={jIdx}
+                    onClick={() => setSelectedJobModal(job)}
+                    className="group border-2 border-black bg-white p-5 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:bg-purple-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between space-y-4"
+                  >
+                    <div>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="text-[10px] font-mono font-black uppercase bg-purple-100 text-purple-900 border border-black px-2.5 py-0.5">
+                          Career Post #{jIdx + 1}
+                        </span>
+                        <span className="text-xs font-black text-purple-700 group-hover:translate-x-1 transition-transform">
+                          Open Full Page →
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black uppercase text-black mt-2 group-hover:text-purple-800">
+                        💼 {job.title}
+                      </h3>
+                      <p className="text-xs text-stone-600 leading-relaxed mt-1 line-clamp-3 font-medium">
+                        {job.shortDescription || job.fullOverview}
+                      </p>
+                    </div>
+
+                    <div className="border-t border-dashed border-stone-300 pt-3 flex flex-wrap justify-between items-center text-xs font-mono font-bold text-stone-600">
+                      <span>💰 Salary: <strong className="text-emerald-700">{job.salaryRange?.entry || 'Competitive'}</strong></span>
+                      <span className="text-purple-700 underline font-black uppercase text-xs">View Specification →</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </main>
+
+          {/* Full Page Footer */}
+          <footer className="p-6 bg-stone-100 border-t-2 border-black flex justify-between items-center text-xs font-mono shrink-0">
+            <span className="text-stone-500 font-medium">DIRPA Academic Knowledge Engine — Full Page Course View</span>
+            <button
+              onClick={() => setSelectedCourseModal(null)}
+              className="px-5 py-2 border-2 border-black bg-black text-white font-black uppercase hover:bg-stone-800 transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+            >
+              ← Back to Main Dashboard
+            </button>
+          </footer>
+        </div>
+      )}
+
+      {/* ================= 100% FULL-PAGE VIEW 2: FULL DETAILED JOB SPECIFICATION ================= */}
+      {selectedJobModal && (
+        <div className="fixed inset-0 z-[130] bg-stone-50 text-black overflow-y-auto flex flex-col min-h-screen w-full animate-fade-in select-text">
+          {/* Top Full-Width Sticky Navigation Header */}
+          <header className="bg-purple-950 text-white p-5 md:p-6 border-b-4 border-black sticky top-0 z-50 shadow-md">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setSelectedJobModal(null)}
+                    className="px-3 py-1.5 text-xs font-mono font-black uppercase bg-purple-800 hover:bg-purple-700 text-white border border-purple-400 transition-colors flex items-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]"
+                  >
+                    ← Back to Course Details
+                  </button>
+                  <span className="text-[10px] font-mono font-black uppercase text-amber-300 bg-purple-900 border border-purple-700 px-2.5 py-1">
+                    Job Specification Page
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-4xl font-display font-black uppercase text-white tracking-wide">
+                  💼 {selectedJobModal.title}
+                </h1>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedJobModal(null);
+                  setSelectedCourseModal(null);
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white border-2 border-black font-display font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all cursor-pointer shrink-0"
+              >
+                Exit to Main Dashboard ✕
+              </button>
+            </div>
+          </header>
+
+          {/* Full Page Content */}
+          <main className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 space-y-8 flex-1">
+            
+            {/* Role Overview */}
+            <div className="border-2 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-3">
+              <h2 className="text-xs font-black uppercase tracking-wider text-purple-900 border-b-2 border-black pb-2">
+                📌 Comprehensive Role Overview
+              </h2>
+              <p className="text-sm text-stone-800 leading-relaxed font-medium">
+                {selectedJobModal.fullOverview || selectedJobModal.shortDescription}
+              </p>
+            </div>
+
+            {/* Responsibilities */}
+            {selectedJobModal.responsibilities && selectedJobModal.responsibilities.length > 0 && (
+              <div className="border-2 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                <h2 className="text-xs font-black uppercase tracking-wider text-purple-900 border-b-2 border-black pb-2">
+                  🛠️ Primary Day-to-Day Responsibilities
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {selectedJobModal.responsibilities.map((resp: string, rIdx: number) => (
+                    <div key={rIdx} className="bg-stone-50 border border-black/20 p-3 text-xs text-stone-800 flex items-start gap-2 leading-relaxed font-medium">
+                      <span className="text-purple-700 font-black">▶</span>
+                      <span>{resp}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Required Skills */}
+            {selectedJobModal.requiredSkills && selectedJobModal.requiredSkills.length > 0 && (
+              <div className="border-2 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                <h2 className="text-xs font-black uppercase tracking-wider text-purple-900 border-b-2 border-black pb-2">
+                  ⚡ Key Required Skills & Competencies
+                </h2>
+                <div className="flex flex-wrap gap-2.5">
+                  {selectedJobModal.requiredSkills.map((skill: string, sIdx: number) => (
+                    <span key={sIdx} className="text-xs font-bold bg-purple-100 border-2 border-black px-3.5 py-1.5 text-purple-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Salary Matrix */}
+            {selectedJobModal.salaryRange && (
+              <div className="border-2 border-black bg-emerald-50 p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                <h2 className="text-xs font-black uppercase tracking-wider text-emerald-900 border-b-2 border-black pb-2">
+                  💵 Market Salary Benchmarks
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-white border-2 border-black p-4 space-y-1 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">Entry Level (0-2 Yrs)</span>
+                    <p className="text-base font-black text-emerald-800">{selectedJobModal.salaryRange.entry || '₹5L - ₹9L PA'}</p>
+                  </div>
+                  <div className="bg-white border-2 border-black p-4 space-y-1 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">Mid Level (3-6 Yrs)</span>
+                    <p className="text-base font-black text-emerald-800">{selectedJobModal.salaryRange.mid || '₹12L - ₹20L PA'}</p>
+                  </div>
+                  <div className="bg-white border-2 border-black p-4 space-y-1 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <span className="text-[10px] font-mono font-bold uppercase text-stone-500 block">Senior / Lead (7+ Yrs)</span>
+                    <p className="text-base font-black text-emerald-800">{selectedJobModal.salaryRange.senior || '₹25L - ₹50L+ PA'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Growth Scope & Top Recruiters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {selectedJobModal.growthScope && (
+                <div className="border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-2">
+                  <h3 className="text-xs font-black uppercase text-black">📈 Career Trajectory & Growth Scope</h3>
+                  <p className="text-xs text-stone-700 leading-relaxed font-medium">{selectedJobModal.growthScope}</p>
+                </div>
+              )}
+
+              {selectedJobModal.topRecruiters && selectedJobModal.topRecruiters.length > 0 && (
+                <div className="border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                  <h3 className="text-xs font-black uppercase text-black">🏢 Top Hiring Companies</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedJobModal.topRecruiters.map((rec: string, rIdx: number) => (
+                      <span key={rIdx} className="text-xs font-mono font-bold bg-stone-100 border border-black px-2.5 py-1 text-stone-900">
+                        {rec}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recommended Certifications */}
+            {selectedJobModal.recommendedCertifications && selectedJobModal.recommendedCertifications.length > 0 && (
+              <div className="border-2 border-black bg-blue-50 p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                <h3 className="text-xs font-black uppercase text-blue-900">🎓 Recommended Industry Certifications</h3>
+                <div className="space-y-1.5">
+                  {selectedJobModal.recommendedCertifications.map((cert: string, cIdx: number) => (
+                    <p key={cIdx} className="text-xs text-blue-950 font-medium flex items-center gap-2">
+                      <span className="text-blue-700 font-bold">✔</span> <span>{cert}</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Genuine Practitioner Reviews from Database */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                <MessageSquare className="w-6 h-6 text-purple-700" />
+                <h2 className="text-xl font-display font-black uppercase text-black">
+                  Practitioner Reviews & Verified Feedback
+                </h2>
+              </div>
+
+              {(() => {
+                const realJobFeedbacks = allDbFeedbacks.filter(f =>
+                  isCourseIdEquivalent(f.courseId, selectedJobModal.id) ||
+                  isCourseIdEquivalent(f.courseId, selectedJobModal.title)
+                );
+                if (realJobFeedbacks.length === 0) {
+                  return (
+                    <div className="border-2 border-dashed border-stone-300 bg-white p-8 text-center space-y-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <MessageSquare className="w-8 h-8 text-stone-400 mx-auto" />
+                      <p className="text-xs font-black uppercase tracking-wider text-stone-700">No Genuine Database Reviews Yet</p>
+                      <p className="text-xs text-stone-500 font-medium max-w-md mx-auto">
+                        There are currently no user-submitted practitioner reviews for this job role in the database.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {realJobFeedbacks.map((f: any, fIdx: number) => (
+                      <div key={fIdx} className="bg-stone-50 border-2 border-black p-5 text-xs font-semibold space-y-3 flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <span className="font-mono font-black text-sm text-black block">{f.name || f.user || "Verified Practitioner"}</span>
+                              <span className="text-[10px] text-gray-500 font-mono font-bold uppercase tracking-wider block mt-0.5">{f.company || f.institutionName || "Industry Contributor"}</span>
+                            </div>
+                            <span className="bg-[#8B5CF6] text-white font-mono text-[9px] font-black px-2 py-0.5 border border-[#7c3aed]">
+                              ★ Rating: {(f.overallRating || f.rating || 5).toFixed(1)} / 5.0
+                            </span>
+                          </div>
+                          <p className="text-neutral-700 leading-relaxed pt-2 border-t border-dashed border-stone-200 font-medium italic">
+                            "{f.feedbackText || f.experience}"
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+          </main>
+
+          {/* Job Footer */}
+          <footer className="p-6 bg-purple-950 border-t-2 border-black flex justify-between items-center text-xs text-white font-mono shrink-0">
+            <button
+              onClick={() => setSelectedJobModal(null)}
+              className="px-4 py-2 border border-purple-400 bg-purple-900 hover:bg-purple-800 text-white font-bold uppercase transition-all cursor-pointer"
+            >
+              ← Back to Course Details
+            </button>
+            <button
+              onClick={() => {
+                setSelectedJobModal(null);
+                setSelectedCourseModal(null);
+              }}
+              className="px-5 py-2 border-2 border-black bg-white text-black font-black uppercase hover:bg-stone-200 transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+            >
+              Back to Main Dashboard
+            </button>
+          </footer>
         </div>
       )}
 

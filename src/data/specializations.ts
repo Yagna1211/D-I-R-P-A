@@ -67,29 +67,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "4 Years",
       difficulty: "Intense",
       keyFocusAreas: ["Data Structures & Algorithms", "Full Stack Web Development", "Cloud Architecture & Devops", "Machine Learning & AI Pipelines"],
-      feedback: [
-        {
-          user: "Ananya Sharma",
-          role: "B.Tech CSE Graduate 2024, now at Microsoft",
-          avatarBg: "bg-teal-500",
-          comment: "Extremely challenging but completely worth it! Focus on coding from day one, do not just memorize textbook concepts. Learn Git and work on real projects.",
-          rating: 4.8
-        },
-        {
-          user: "Rohan Varma",
-          role: "3rd Year CSE Student, IIT Hyderabad",
-          avatarBg: "bg-blue-500",
-          comment: "Competitive coding can get stressful, but the industry demand is massive. Building side projects and web apps helped me crack an early internship.",
-          rating: 4.2
-        },
-        {
-          user: "Gautam Rao",
-          role: "Systems Architect // Alumni 2018",
-          avatarBg: "bg-indigo-600",
-          comment: "CSE opens doors to remote work and global companies. Make sure to learn system design early if you want high-scale product roles.",
-          rating: 5.0
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_software_engineer",
@@ -116,22 +94,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Requires continuous retraining as frameworks become obsolete in 2-3 years",
             "Occasional high pressure around tight software product releases"
           ],
-          feedback: [
-            {
-              user: "Priya Menon",
-              company: "Razorpay Corporate Offices",
-              experience: "The joy of pushing a feature live accessed by millions of users is unmatched. Sometimes release days get stressful, but the work-life balance is decent if you set boundaries.",
-              satisfaction: 4.5,
-              workLifeBalance: 4.0
-            },
-            {
-              user: "Abhishek Goel",
-              company: "Stripe Software Lab",
-              experience: "Excellent pay and great remote benefits. You are evaluated on impact and clean architectural logic, which makes the work highly intellectual.",
-              satisfaction: 4.9,
-              workLifeBalance: 4.5
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
@@ -185,15 +148,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Heavy emphasis on messy, unorganized dataset cleaning and pipeline debugging",
             "Huge cloud server cost pressure when running models"
           ],
-          feedback: [
-            {
-              user: "Dr. Sandeep Patel",
-              company: "Aditya AI Labs",
-              experience: "You need a deep tolerance for trial-and-error. 90% of model experiments fail initially, but when you crack an 98% accuracy score and deploy it, the business transformation is absolute magic.",
-              satisfaction: 4.7,
-              workLifeBalance: 3.8
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1527474305487-b87b222841cc?auto=format&fit=crop&w=800&q=80",
@@ -226,22 +181,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "4 Years",
       difficulty: "Hard",
       keyFocusAreas: ["Analog & Digital Electronics", "Microcontroller Architectures", "VLSI Circuit Layout Design", "RF Signal & Wireless Communication"],
-      feedback: [
-        {
-          user: "Vignesh Prasad",
-          role: "VLSI Layout Analyst, Qualcomm India",
-          avatarBg: "bg-purple-600",
-          comment: "ECE bridges the gap between hardware physics and code. If you want high-paying Core hardware roles, prioritize learning VLSI design models and Verilog early.",
-          rating: 4.5
-        },
-        {
-          user: "Megha Sreenivas",
-          role: "Embedded Developer, Bosch India",
-          avatarBg: "bg-pink-500",
-          comment: "Excellent balance of circuits and software. We write low-level firmware in C and Assembly which directly controls electronics. Highly satisfying!",
-          rating: 4.4
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_vlsi_engineer",
@@ -268,15 +208,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Vast academic learning curve; requires meticulous physical accuracy",
             "Fewer remote work options due to heavy lab security protocols"
           ],
-          feedback: [
-            {
-              user: "Naveen Kutty",
-              company: "Intel Fabrication Labs",
-              experience: "Seeing a chip you designed being soldered onto laptop motherboards is an extraordinary feeling. The precision required is immense, but the career security is ironclad.",
-              satisfaction: 4.8,
-              workLifeBalance: 4.1
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
@@ -310,22 +242,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "4 Years",
       difficulty: "Hard",
       keyFocusAreas: ["Electrical Power Systems", "Control Systems & PLCs", "Heavy AC/DC Generators & Transformers", "Electric Vehicle (EV) Powertrains"],
-      feedback: [
-        {
-          user: "Saurabh Mishra",
-          role: "Grid Operations Engineer, NTPC Ltd",
-          avatarBg: "bg-amber-600",
-          comment: "EEE is mathematical and challenging. You deal with high-voltage machinery and solar converter boards. Pay attention to Power Electronics and Control Theory!",
-          rating: 4.5
-        },
-        {
-          user: "Archana Hegde",
-          role: "EV Battery System Integrator",
-          avatarBg: "bg-emerald-500",
-          comment: "The shift to Electric Vehicles has revitalized EEE. Designing BMS (Battery Management Systems) is highly technical and has great global carrier values.",
-          rating: 4.6
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_ev_powertrain",
@@ -352,15 +269,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Requires extensive lab testing schedules with long troubleshooting times",
             "High supply chain pressures around raw lithium and magnetic materials"
           ],
-          feedback: [
-            {
-              user: "Divyansh Saxena",
-              company: "Ola Electric Mobility Tech",
-              experience: "Building battery packs that charges in 15 minutes without overheating is an extraordinary engineering puzzle. Every day is exciting and hands-on.",
-              satisfaction: 4.7,
-              workLifeBalance: 4.2
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&q=80",
@@ -394,22 +303,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "4 Years",
       difficulty: "Hard",
       keyFocusAreas: ["Solid Mechanics & Materials Science", "CAD/CAM (SolidWorks & Catia)", "Thermodynamics & IC Engines", "Industrial Robotics & Automation"],
-      feedback: [
-        {
-          user: "Rahul Deshmukh",
-          role: "Design Lead, Larsen & Toubro",
-          avatarBg: "bg-blue-600",
-          comment: "Mechanical is the evergreen branch of engineering. Get excellent at 3D modeling tools like SolidWorks and structural analysis (Ansys) if you want design roles over heavy plant floor jobs.",
-          rating: 4.2
-        },
-        {
-          user: "Ankit Jha",
-          role: "Senior Robotics Architect",
-          avatarBg: "bg-amber-500",
-          comment: "The future of Mech is robotics and composite materials. Combining structural design with servo controls makes you highly eligible for top smart factory roles.",
-          rating: 4.5
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_robotics_inter",
@@ -436,15 +330,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Slow iteration times; material procurement and custom fabrication takes weeks",
             "Tighter starting margins compared to purely software fields"
           ],
-          feedback: [
-            {
-              user: "Abhay Patil",
-              company: "Fanuc Robotics Systems",
-              experience: "Deploying automated robots that paint car chassis in 12 seconds with absolute consistency is incredible. You see the immediate physical impact of your code and layout designs.",
-              satisfaction: 4.6,
-              workLifeBalance: 3.9
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80",
@@ -480,22 +366,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "5.5 Years",
       difficulty: "Intense",
       keyFocusAreas: ["Human Anatomy & Physiology", "Pathology & Microbiology", "Pharmacology & Drug Dosage", "Internal Medicine & Surgery Clinicals"],
-      feedback: [
-        {
-          user: "Dr. Kavitha Mohan",
-          role: "MBBS Graduate, Resident Intern, Bangalore Medical College",
-          avatarBg: "bg-teal-500",
-          comment: "Mbbs is a long marathon. The workload during the internship year is monumental with 36-hour shifts, but saving your first patient makes every sleepless night trivial.",
-          rating: 4.9
-        },
-        {
-          user: "Dr. Ayush Goyal",
-          role: "General Medical Practitioner // Alumni 2015",
-          avatarBg: "bg-blue-600",
-          comment: "Develop deep empathy. Medical books are vast, but clinical diagnosis is an art of listening to patient stories carefully. Keep learning!",
-          rating: 4.7
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_medical_officer",
@@ -522,15 +393,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "High emotional fatigue interacting with critical illnesses and distress daily",
             "Extremely long academic timeline (5.5 years MBBS + 3 years MD specialization)"
           ],
-          feedback: [
-            {
-              user: "Dr. Shalini Swamy",
-              company: "Apollo Corporate Hospitals",
-              experience: "The hours are grueling, and clinical responsibility is immense. But when a patient you treated walks out fully recovered, thanking you with tears in their eyes—there is absolutely no career matching that satisfaction.",
-              satisfaction: 4.9,
-              workLifeBalance: 3.0
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80",
@@ -566,15 +429,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "3 Years",
       difficulty: "Medium",
       keyFocusAreas: ["Corporate Accounting Ledger", "Statutory Taxation Laws (GST & Incometax)", "Financial Risk Modeling", "Statutory Audit Foundations"],
-      feedback: [
-        {
-          user: "Tanmay Roy",
-          role: "Risk Consultant, Deloitte India",
-          avatarBg: "bg-blue-600",
-          comment: "B.Com Honors is a powerful foundation. Do not just read theoretical ledgers; learn Excel modeling, financial reports analysis, and study for CA/FRM alongside for top packages.",
-          rating: 4.4
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_finance_analyst",
@@ -601,15 +456,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Severe workload stress during March-April financial closing periods",
             "Low entry-level salary tiers unless graduating from tier-1 elite institutions"
           ],
-          feedback: [
-            {
-              user: "Nisha Kapoor",
-              company: "KPMG Advisory Services",
-              experience: "The corporate culture is high-profile, and reading market balance sheets is fascinating. Excel is literally our canvas. The hours get long during quarterly filings, but the path is very rewarding.",
-              satisfaction: 4.4,
-              workLifeBalance: 3.7
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
@@ -645,15 +492,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
       duration: "3 Years",
       difficulty: "Medium",
       keyFocusAreas: ["Object Oriented Programming (Java/Python)", "Relational Databases & SQL", "Mobile App Development", "UI/UX Layout Concepts"],
-      feedback: [
-        {
-          user: "Hemanth Rao",
-          role: "Full-Stack Dev, TCS Bangalore",
-          avatarBg: "bg-sky-500",
-          comment: "BCA focuses heavily on software application code. It is an excellent fast 3-year option. Make sure to learn standard JS environments: Node, React, and MongoDB to stand out.",
-          rating: 4.3
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "job_bca_developer",
@@ -680,15 +519,7 @@ export const DEGREE_SPECIALIZATION_MAP: Record<string, SpecializationCourse[]> =
             "Meticulous, repetitive debugging of cellular UI screen scaling bugs",
             "Slower promotion tracks in old IT firms unless updated with master MCA classes"
           ],
-          feedback: [
-            {
-              user: "Ganesh K",
-              company: "Zepto Delivery Tech",
-              experience: "Excellent, practical and fast career launcher. We write direct customer-facing widgets. If you build real apps on Github, recruiters find you instantly.",
-              satisfaction: 4.5,
-              workLifeBalance: 4.1
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=800&q=80",
@@ -727,22 +558,7 @@ export const getFallbackSpecializations = (degreeName: string): SpecializationCo
       duration: "Standard Duration",
       difficulty: "Medium",
       keyFocusAreas: ["Advanced Systems Design", "Strategic Operations", "Industry standards", "Compliance & Audit"],
-      feedback: [
-        {
-          user: "Venkata Raman",
-          role: "Senior Consultant // Alumni 2022",
-          avatarBg: "bg-slate-700",
-          comment: "Highly structure course that bridges theory with actual industrial projects. Focus on building hands-on experience and solid portfolio assets alongside.",
-          rating: 4.6
-        },
-        {
-          user: "Swapna Patil",
-          role: "General Manager",
-          avatarBg: "bg-emerald-600",
-          comment: "Excellent syllabus focused on real-world industrial demands. Ensure you practice practical case files thoroughly.",
-          rating: 4.5
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "fallback_job_1",
@@ -767,15 +583,7 @@ export const getFallbackSpecializations = (degreeName: string): SpecializationCo
             "Requires consistent, rigorous tracking and repetitive data logs",
             "Higher friction around manual compliance and regulatory checks"
           ],
-          feedback: [
-            {
-              user: "Nikhil Joshi",
-              company: "Premier Operations Group",
-              experience: "The operational scale is massive. You coordinates with multiple departments, ensuring smooth flowcharts. It's a highly valued executive role.",
-              satisfaction: 4.5,
-              workLifeBalance: 4.0
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
@@ -808,15 +616,7 @@ export const getFallbackSpecializations = (degreeName: string): SpecializationCo
       duration: "Standard Duration",
       difficulty: "Hard",
       keyFocusAreas: ["Advanced Research Methodologies", "Statistical Modeling", "Modern tech frameworks", "Corporate policy"],
-      feedback: [
-        {
-          user: "Dr. Arundhati Roy",
-          role: "Head Researcher // Scientific Council",
-          avatarBg: "bg-fuchsia-600",
-          comment: "This track values intellectual curiosity, writing papers, and designing models. Great route if you plan to get PhDs or join advanced product research divisions.",
-          rating: 4.7
-        }
-      ],
+      feedback: [],
       jobs: [
         {
           id: "fallback_job_2",
@@ -841,15 +641,7 @@ export const getFallbackSpecializations = (degreeName: string): SpecializationCo
             "Results take a long time to materialize; projects may go years before success",
             "Highly competitive funding models requiring heavy document writing"
           ],
-          feedback: [
-            {
-              user: "Shreyas Iyer",
-              company: "National Research Org",
-              experience: "Excellent environment with stellar intellectual freedom. You are surrounded by top experts. The focus is strictly on data, logic and discovery.",
-              satisfaction: 4.6,
-              workLifeBalance: 4.2
-            }
-          ],
+          feedback: [],
           images: [
             {
               url: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80",

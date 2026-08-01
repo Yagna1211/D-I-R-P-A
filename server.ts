@@ -518,13 +518,20 @@ async function startServer() {
       Maximum/desired duration: ${durationPref}
       Career goal or position: ${careerGoal}
 
-      Recommend 2 highly suitable and detailed educational routes. Suggest 2 alternative pathways they might not have considered. Provide general warm guidance. Your suggestions must reside in a JSON output mirroring the requested schema. Ensure the response is robust, practical, and highly suited to Indian & international student realities.`;
+      Recommend 2 highly suitable educational routes and 2 alternative pathways.
+      For EVERY course pathway, provide genuine, highly realistic data including:
+      1. Course Name & Overview.
+      2. Comprehensive Syllabus (semester/year modules with specific topics and learning outcomes).
+      3. Authentic Alumni & Mentor Feedback (author name, role/graduation year, 1-5 rating, review text, advice).
+      4. Potential Job Roles with FULL, realistic descriptions (Job title, short description, full overview, responsibilities, required skills, salary range for entry/mid/senior levels, growth scope, top recruiters, certifications).
+
+      Ensure suggestions reside in JSON output matching the requested schema. Make data realistic for Indian and international academic/industry standards.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert educational counselor with deep knowledge of post-10th, post-12th and graduate level academic pathways, diplomas, entrance exams, and career roadmaps.",
+          systemInstruction: "You are an expert educational counselor with deep knowledge of academic pathways, diplomas, syllabus structures, alumni experiences, and real-world career job descriptions.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -534,27 +541,66 @@ async function startServer() {
                 items: {
                   type: Type.OBJECT,
                   properties: {
-                    name: { type: Type.STRING, description: "Official name of the academic major or pathway" },
-                    description: { type: Type.STRING, description: "Brief description of this academic pathway" },
-                    whyFits: { type: Type.STRING, description: "Detailed reasons why this specifically fits their interests and goals" },
+                    name: { type: Type.STRING, description: "Official name of the academic degree or pathway" },
+                    description: { type: Type.STRING, description: "Brief overview of this degree or pathway" },
+                    whyFits: { type: Type.STRING, description: "Detailed explanation of why it suits the student" },
                     estimatedFees: { type: Type.STRING, description: "Estimated average fees" },
-                    subjects: {
+                    duration: { type: Type.STRING, description: "Estimated completion duration" },
+                    syllabus: {
                       type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                      description: "Core subjects involved in this path"
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          semesterOrYear: { type: Type.STRING },
+                          title: { type: Type.STRING },
+                          topics: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          learningOutcome: { type: Type.STRING }
+                        },
+                        required: ["semesterOrYear", "title", "topics"]
+                      }
                     },
-                    timeline: {
+                    feedback: {
                       type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                      description: "Key milestones year-on-year"
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          authorName: { type: Type.STRING },
+                          roleOrYear: { type: Type.STRING },
+                          rating: { type: Type.NUMBER },
+                          feedbackText: { type: Type.STRING },
+                          keyTakeaway: { type: Type.STRING }
+                        },
+                        required: ["authorName", "roleOrYear", "rating", "feedbackText"]
+                      }
                     },
-                    careerPotential: {
+                    jobs: {
                       type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                      description: "Potential job postings or titles"
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          title: { type: Type.STRING },
+                          shortDescription: { type: Type.STRING },
+                          fullOverview: { type: Type.STRING },
+                          responsibilities: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          requiredSkills: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          salaryRange: {
+                            type: Type.OBJECT,
+                            properties: {
+                              entry: { type: Type.STRING },
+                              mid: { type: Type.STRING },
+                              senior: { type: Type.STRING }
+                            },
+                            required: ["entry", "mid", "senior"]
+                          },
+                          growthScope: { type: Type.STRING },
+                          topRecruiters: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          recommendedCertifications: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        },
+                        required: ["title", "shortDescription", "fullOverview", "responsibilities", "requiredSkills", "salaryRange", "growthScope", "topRecruiters"]
+                      }
                     }
                   },
-                  required: ["name", "description", "whyFits", "estimatedFees", "subjects", "timeline", "careerPotential"]
+                  required: ["name", "description", "whyFits", "estimatedFees", "syllabus", "feedback", "jobs"]
                 }
               },
               alternatives: {
@@ -564,12 +610,64 @@ async function startServer() {
                   properties: {
                     name: { type: Type.STRING },
                     description: { type: Type.STRING },
-                    whyAlternative: { type: Type.STRING }
+                    whyAlternative: { type: Type.STRING },
+                    duration: { type: Type.STRING },
+                    estimatedFees: { type: Type.STRING },
+                    syllabus: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          semesterOrYear: { type: Type.STRING },
+                          title: { type: Type.STRING },
+                          topics: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        },
+                        required: ["semesterOrYear", "title", "topics"]
+                      }
+                    },
+                    feedback: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          authorName: { type: Type.STRING },
+                          roleOrYear: { type: Type.STRING },
+                          rating: { type: Type.NUMBER },
+                          feedbackText: { type: Type.STRING }
+                        },
+                        required: ["authorName", "roleOrYear", "rating", "feedbackText"]
+                      }
+                    },
+                    jobs: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          title: { type: Type.STRING },
+                          shortDescription: { type: Type.STRING },
+                          fullOverview: { type: Type.STRING },
+                          responsibilities: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          requiredSkills: { type: Type.ARRAY, items: { type: Type.STRING } },
+                          salaryRange: {
+                            type: Type.OBJECT,
+                            properties: {
+                              entry: { type: Type.STRING },
+                              mid: { type: Type.STRING },
+                              senior: { type: Type.STRING }
+                            },
+                            required: ["entry", "mid", "senior"]
+                          },
+                          growthScope: { type: Type.STRING },
+                          topRecruiters: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        },
+                        required: ["title", "shortDescription", "fullOverview", "responsibilities", "requiredSkills", "salaryRange", "growthScope", "topRecruiters"]
+                      }
+                    }
                   },
-                  required: ["name", "description", "whyAlternative"]
+                  required: ["name", "description", "whyAlternative", "syllabus", "feedback", "jobs"]
                 }
               },
-              generalAdvice: { type: Type.STRING, description: "Empathic counselor advice and action items" }
+              generalAdvice: { type: Type.STRING }
             },
             required: ["recommendedPaths", "alternatives", "generalAdvice"]
           }
@@ -726,57 +824,272 @@ function getMockRecommendation(
   return {
     recommendedPaths: [
       {
-        name: level === "10th" ? "Intermediate MPC with Tech Focus" : "B.Tech Computer Science / Information Tech",
-        description: `A fast-track engineering track centered around structural algorithms, computing platforms, and mathematical foundations suited for a career as ${careerGoal}.`,
-        whyFits: `Matches your top interest in ${formatInterests} and utilizes your core strength in ${formatStrengths}. It aligns perfectly with your goal to become a ${careerGoal}.`,
-        estimatedFees: budget === "low" ? "₹15,000 - ₹35,000/yr (Govt scholarship)" : "₹1,20,000 - ₹2,50,000/yr (Private)",
-        subjects: ["Data Structures & Algorithms", "Mathematics & Computing", "Database Management", "Artificial Intelligence Foundations"],
-        timeline: [
-          "Year 1: Setup systems foundation and standard scripting languages",
-          "Year 2: Master data structures, algorithmic puzzles, and take online bootcamps",
-          "Year 3: Start live projects, open-source development, and internship roles",
-          "Year 4: Finalize professional portfolios and drive technical placements"
+        name: level === "10th" ? "Intermediate MPC (Maths, Physics, Chemistry)" : "B.Tech Computer Science & Engineering",
+        description: `A comprehensive engineering degree focused on software architecture, algorithms, cloud computing, and AI systems, perfectly targeted towards a career as a ${careerGoal || 'Software Engineer'}.`,
+        whyFits: `Matches your strong interest in ${formatInterests} and leverages your core analytical strength in ${formatStrengths}. It directly prepares you for top-tier technology roles.`,
+        estimatedFees: budget === "low" ? "₹20,000 - ₹50,000/yr (Government Subsidized)" : "₹1,50,000 - ₹3,00,000/yr (Private Accredited)",
+        duration: "4 Years (8 Semesters)",
+        syllabus: [
+          {
+            semesterOrYear: "Semester 1 & 2 (Year 1)",
+            title: "Core Engineering Foundations & Computational Logic",
+            topics: ["Calculus & Linear Algebra", "Engineering Physics", "Fundamentals of Programming in C/Python", "Digital Logic Design"],
+            learningOutcome: "Master baseline mathematical principles and fundamental algorithmic reasoning."
+          },
+          {
+            semesterOrYear: "Semester 3 & 4 (Year 2)",
+            title: "Data Structures & Systems Architecture",
+            topics: ["Object-Oriented Programming (Java/C++)", "Data Structures & Algorithms", "Database Management Systems (SQL/NoSQL)", "Operating Systems Architecture"],
+            learningOutcome: "Ability to design memory-efficient data structures and query complex databases."
+          },
+          {
+            semesterOrYear: "Semester 5 & 6 (Year 3)",
+            title: "Software Engineering & Network Security",
+            topics: ["Computer Networks & Security Protocols", "Web Applications & Microservices", "Machine Learning & AI Principles", "Agile Software Development"],
+            learningOutcome: "Build scalable web services, API integrations, and predictive models."
+          },
+          {
+            semesterOrYear: "Semester 7 & 8 (Year 4)",
+            title: "Cloud Infrastructure, Distributed Systems & Capstone Project",
+            topics: ["Cloud Computing (AWS/GCP)", "Distributed Systems & Kubernetes", "Cybersecurity Auditing", "Industry Internship & Capstone Project"],
+            learningOutcome: "Deploy production-ready distributed applications and pass corporate placement interviews."
+          }
         ],
-        careerPotential: [
-          careerGoal || "Software Innovator",
-          "Full Stack Solutions Architect",
-          "Systems Performance Auditor",
-          "Data Infrastructure Specialist"
-        ]
+        feedback: [
+          {
+            authorName: "Ananya Sharma",
+            roleOrYear: "Class of 2024, Software Engineer at Microsoft",
+            rating: 5,
+            feedbackText: "The rigorous focus on Data Structures and System Design gave me an undeniable edge during off-campus placements. Highly recommend participating in open-source hackathons early on!",
+            keyTakeaway: "Prioritize hands-on coding projects alongside classroom theory."
+          },
+          {
+            authorName: "Rahul Varma",
+            roleOrYear: "Senior Systems Architect, Tech Mahindra",
+            rating: 4.5,
+            feedbackText: "Great balance of theoretical Computer Science fundamentals and practical lab work. The cloud computing electives in 3rd year are crucial for modern job markets.",
+            keyTakeaway: "Get certified in AWS or GCP before graduation."
+          }
+        ],
+        jobs: [
+          {
+            title: careerGoal || "Software Engineer / Full Stack Developer",
+            shortDescription: "Architect, develop, and maintain high-scale frontend and backend software applications.",
+            fullOverview: "As a Software Engineer, you will be responsible for designing resilient software solutions, writing clean maintainable code, performing code reviews, and collaborating with product managers and UX designers to build user-centric digital products.",
+            responsibilities: [
+              "Design and build responsive web and mobile user interfaces using modern frameworks.",
+              "Develop scalable RESTful APIs, GraphQL endpoints, and microservices.",
+              "Optimize database queries and ensure database security and data integrity.",
+              "Participate in daily agile standups, sprint planning, and automated CI/CD deployments."
+            ],
+            requiredSkills: ["Data Structures & Algorithms", "React / TypeScript", "Node.js / Express", "SQL & MongoDB", "Docker & Git"],
+            salaryRange: {
+              entry: "₹6,00,000 - ₹12,00,000 PA ($75,000 USD)",
+              mid: "₹14,00,000 - ₹26,00,000 PA ($125,000 USD)",
+              senior: "₹30,00,000 - ₹60,00,000+ PA ($180,000+ USD)"
+            },
+            growthScope: "Exponential growth with clear progression paths: Junior Dev → Senior Engineer → Tech Lead → Engineering Manager / CTO.",
+            topRecruiters: ["Google", "Microsoft", "Amazon", "TCS", "Infosys", "Adobe", "Flipkart"],
+            recommendedCertifications: ["AWS Certified Developer - Associate", "Meta Front-End Developer Professional Certificate"]
+          },
+          {
+            title: "Cloud Infrastructure Architect",
+            shortDescription: "Design, deploy, and manage secure cloud computing environments on GCP, AWS, or Azure.",
+            fullOverview: "Cloud Infrastructure Architects lead the cloud transformation for enterprise organizations, ensuring high availability, disaster recovery, zero-downtime deployments, and optimal cost efficiency across cloud workloads.",
+            responsibilities: [
+              "Define cloud computing infrastructure blueprints using Infrastructure as Code (Terraform).",
+              "Manage container orchestration platforms using Kubernetes and Docker.",
+              "Implement robust security policies, IAM roles, and automated backup strategies.",
+              "Monitor system metrics, latency, and operational health using Prometheus and Grafana."
+            ],
+            requiredSkills: ["AWS / GCP / Azure", "Kubernetes & Docker", "Terraform & Ansible", "Linux Systems Administration", "Networking Protocols"],
+            salaryRange: {
+              entry: "₹7,50,000 - ₹14,00,000 PA",
+              mid: "₹18,00,000 - ₹32,00,000 PA",
+              senior: "₹35,00,000 - ₹75,00,000+ PA"
+            },
+            growthScope: "High demand across global enterprise companies; fast-track transition to Director of Infrastructure.",
+            topRecruiters: ["Google Cloud", "AWS", "Microsoft", "Accenture", "Deloitte Tech", "IBM"],
+            recommendedCertifications: ["Google Cloud Certified Professional Cloud Architect", "AWS Certified Solutions Architect"]
+          }
+        ],
+        timeline: [
+          "Year 1: Master programming logic and core math",
+          "Year 2: Master data structures and algorithms",
+          "Year 3: Industrial internships & project development",
+          "Year 4: Final year placements & capstone project"
+        ],
+        careerPotential: [careerGoal || "Software Engineer", "Cloud Infrastructure Architect", "AI Data Engineer"]
       },
       {
-        name: level === "10th" ? "Polytechnic Diploma in Tech/Electronics" : "B.Des in Product Design / UI-UX Engineering",
-        description: "An interactive, practical curriculum merging aesthetic design, user psychology, and direct system engineering.",
-        whyFits: `Integrates your interest in ${formatInterests} with your logical strengths (${formatStrengths}) for a creative career.`,
-        estimatedFees: budget === "high" ? "₹2,00,000/ye" : "₹40,000/yr",
-        subjects: ["User-Centered Interaction Design", "Cognitive Psychology", "Modern Vector Styling", "Interface Prototyping"],
-        timeline: [
-          "Year 1: Deep dive into design principles, anatomy, and wireframe sketching",
-          "Year 2: Practice software design components and join local design hackathons",
-          "Year 3: Build an extensive online portfolio displaying case studies",
-          "Year 4: Direct industry internship and starting junior roles"
+        name: level === "10th" ? "Polytechnic Diploma in Computer Engineering" : "B.Des in UI/UX & Product Design",
+        description: "An intensive, practical degree focusing on user psychology, digital product design, interactive prototyping, and modern design systems.",
+        whyFits: `Blends your creative interest in ${formatInterests} with your structural thinking (${formatStrengths}). Perfect for design-driven innovation.`,
+        estimatedFees: budget === "high" ? "₹2,50,000/yr" : "₹45,000/yr",
+        duration: "4 Years (8 Semesters)",
+        syllabus: [
+          {
+            semesterOrYear: "Year 1",
+            title: "Design Fundamentals, Color Theory & Visual Ergonomics",
+            topics: ["History of Visual Communication", "Color Theory & Typography", "Drawing & Form Studies", "User Research Methodologies"],
+            learningOutcome: "Gain deep visual literacy and empathetic user observation skills."
+          },
+          {
+            semesterOrYear: "Year 2",
+            title: "Interaction Design & Wireframing",
+            topics: ["Information Architecture", "Wireframing & Prototyping in Figma", "Usability Testing Protocols", "Micro-interactions & Animation"],
+            learningOutcome: "Build interactive clickable high-fidelity prototypes for web and mobile."
+          },
+          {
+            semesterOrYear: "Year 3",
+            title: "Design Systems & Frontend Design Engineering",
+            topics: ["Design Systems (Tokens, Accessibility)", "HTML5/CSS3/Tailwind Engineering", "Mobile App UX Patterns", "Design Thinking Workshop"],
+            learningOutcome: "Bridge the gap between design concepts and developer implementation."
+          },
+          {
+            semesterOrYear: "Year 4",
+            title: "Product Strategy & Graduation Portfolio",
+            topics: ["UX Metrics & Analytics (A/B Testing)", "Design Leadership & Business Strategy", "Industry Graduation Internship", "Portfolio Defense"],
+            learningOutcome: "Graduate with a job-ready portfolio containing multi-platform design case studies."
+          }
         ],
-        careerPotential: [
-          "Lead UI/UX architect",
-          "Cognitive systems researcher",
-          "Interactive layout engineer",
-          "Creative product manager"
-        ]
+        feedback: [
+          {
+            authorName: "Kavya Reddy",
+            roleOrYear: "Lead UX Designer at Swiggy",
+            rating: 5,
+            feedbackText: "The hands-on user research exercises and Figma design system workshops were fantastic. It taught me how to advocate for the user in real product teams.",
+            keyTakeaway: "Document your design reasoning thoroughly in case studies."
+          }
+        ],
+        jobs: [
+          {
+            title: "Product UX/UI Designer",
+            shortDescription: "Conduct user research and design beautiful, functional digital product interfaces.",
+            fullOverview: "Product Designers shape how millions of users experience software products. You will work closely with engineering teams to transform complex user problems into effortless digital interactions.",
+            responsibilities: [
+              "Conduct qualitative user interviews and quantitative usability studies.",
+              "Create wireframes, user flow diagrams, and high-fidelity interactive prototypes in Figma.",
+              "Establish and maintain design systems across iOS, Android, and Web platforms.",
+              "Iterate based on user feedback, analytics data, and business KPIs."
+            ],
+            requiredSkills: ["Figma & Adobe CC", "User Research & Usability Testing", "Design Systems & Tokens", "Interaction Design", "Prototyping"],
+            salaryRange: {
+              entry: "₹5,50,000 - ₹10,00,000 PA",
+              mid: "₹12,00,000 - ₹22,00,000 PA",
+              senior: "₹25,00,000 - ₹45,00,000+ PA"
+            },
+            growthScope: "Tremendous growth in tech, SaaS, and e-commerce companies; career path leads to Head of Design / VP of Product.",
+            topRecruiters: ["Swiggy", "Zomato", "Uber", "Razorpay", "Adobe", "CRED"],
+            recommendedCertifications: ["Google UX Design Professional Certificate", "Figma Design System Specialist"]
+          }
+        ],
+        timeline: [
+          "Year 1: Design theory & sketch fundamentals",
+          "Year 2: Figma prototyping & usability studies",
+          "Year 3: Design systems & live app case studies",
+          "Year 4: Corporate design internship & portfolio launch"
+        ],
+        careerPotential: ["Product UX/UI Designer", "Design Systems Specialist", "UX Researcher"]
       }
     ],
     alternatives: [
       {
-        name: "Bachelor of Business Administration (BBA) with Informatics",
-        description: "A business framework course analyzing commercial logistics, team architectures, and database tools.",
-        whyAlternative: "Bridges the technical field with administrative business strategies, offering exceptional leadership avenues."
+        name: "BCA (Bachelor of Computer Applications)",
+        description: "A specialized 3-year undergraduate course focusing on practical software development, database administration, and web applications.",
+        whyAlternative: "Offers a faster 3-year entry into IT careers with a lower tuition burden.",
+        duration: "3 Years",
+        estimatedFees: "₹40,000 - ₹90,000/yr",
+        syllabus: [
+          {
+            semesterOrYear: "Year 1",
+            title: "Programming & Database Foundations",
+            topics: ["Programming in C & C++", "Computer Fundamentals", "Relational Databases (SQL)", "Web Technologies"]
+          },
+          {
+            semesterOrYear: "Year 2 & 3",
+            title: "Full Stack & Mobile Development",
+            topics: ["Java & Python Development", "Software Engineering Principles", "Cloud Deployment", "Final Year Project"]
+          }
+        ],
+        feedback: [
+          {
+            authorName: "Siddharth Verma",
+            roleOrYear: "BCA Graduate, Web Developer at TechCorp",
+            rating: 4,
+            feedbackText: "Great choice if you want to complete your degree in 3 years and start working or pursue an MCA later."
+          }
+        ],
+        jobs: [
+          {
+            title: "Junior Web Developer",
+            shortDescription: "Build and maintain responsive websites and web applications.",
+            fullOverview: "Develop modern web applications using HTML, CSS, JavaScript, and backend APIs.",
+            responsibilities: [
+              "Implement web pages matching UI designs.",
+              "Connect frontend components to backend databases.",
+              "Fix bugs and optimize website performance."
+            ],
+            requiredSkills: ["JavaScript", "HTML/CSS", "SQL", "Git"],
+            salaryRange: {
+              entry: "₹3,50,000 - ₹6,50,000 PA",
+              mid: "₹7,00,000 - ₹12,00,000 PA",
+              senior: "₹15,00,000 - ₹28,00,000 PA"
+            },
+            growthScope: "Fast-track promotion to Full Stack Developer upon mastering backend frameworks.",
+            topRecruiters: ["TCS", "Wipro", "Cognizant", "HCL Tech"]
+          }
+        ]
       },
       {
-        name: "B.Sc. in Physics & Applied Mathematics",
-        description: "A deeply theoretical pure sciences degree centering on computational vectors, physics, and deep math.",
-        whyAlternative: "Provides excellent academic research credentials if you want to enter advanced modeling or national laboratories."
+        name: "B.Sc in Data Science & Artificial Intelligence",
+        description: "An intensive 3 to 4-year degree focusing on statistical modeling, big data analytics, machine learning, and AI algorithms.",
+        whyAlternative: "Direct specialization into high-growth AI and Data Analytics domains without traditional general engineering electives.",
+        duration: "3 - 4 Years",
+        estimatedFees: "₹60,000 - ₹1,50,000/yr",
+        syllabus: [
+          {
+            semesterOrYear: "Year 1 & 2",
+            title: "Statistics, Probability & Python for Data Science",
+            topics: ["Applied Statistics & Probability", "Python Data Science Stack (NumPy, Pandas)", "Database Analytics", "Data Visualization"]
+          },
+          {
+            semesterOrYear: "Year 3 & 4",
+            title: "Machine Learning, Deep Learning & Big Data",
+            topics: ["Supervised & Unsupervised Machine Learning", "Neural Networks & PyTorch", "Big Data Processing (Spark)", "NLP & Computer Vision"]
+          }
+        ],
+        feedback: [
+          {
+            authorName: "Divya Nair",
+            roleOrYear: "Data Analyst at Tiger Analytics",
+            rating: 5,
+            feedbackText: "The mathematical rigor and heavy Python orientation prepared me perfectly for real analytics projects."
+          }
+        ],
+        jobs: [
+          {
+            title: "Data Analyst / AI Specialist",
+            shortDescription: "Extract insights from big data and deploy machine learning models.",
+            fullOverview: "Analyze business metrics, build predictive models, and communicate insights to leadership teams.",
+            responsibilities: [
+              "Clean and process raw datasets from SQL databases.",
+              "Build statistical models and interactive dashboards in Tableau/PowerBI.",
+              "Train machine learning models using Scikit-Learn and PyTorch."
+            ],
+            requiredSkills: ["Python", "SQL", "Tableau / PowerBI", "Pandas", "Machine Learning"],
+            salaryRange: {
+              entry: "₹5,00,000 - ₹9,50,000 PA",
+              mid: "₹11,00,000 - ₹20,00,000 PA",
+              senior: "₹24,00,000 - ₹45,00,000+ PA"
+            },
+            growthScope: "High demand across finance, e-commerce, healthcare, and AI research.",
+            topRecruiters: ["Mu Sigma", "Fractal Analytics", "Tiger Analytics", "Deloitte", "Amazon"]
+          }
+        ]
       }
     ],
-    generalAdvice: `Since your goal is to be a ${careerGoal || "professional"}, always combine academic certificates with self-driven portfolios. Focus on your strength in ${formatStrengths} to solve hard problems! Build networks inside community programs like DIRPA, talk to verified alumni, and update your timeline regularly.`
+    generalAdvice: `Since your career goal is ${careerGoal || "a technical professional"}, complement your academic degree with real-world projects, GitHub repositories, and active community participation. Connect with alumni on DIRPA to ask specific course questions!`
   };
 }
 
