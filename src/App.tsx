@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   GraduationCap,
   BookOpen,
@@ -44,7 +44,9 @@ import {
   Linkedin,
   Instagram,
   Heart,
-  Users
+  Users,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { ACADEMIC_PATHWAYS, GENERAL_STATISTICS, INTERMEDIATE_GROUPS, POLYTECHNIC_DIPLOMAS, ITI_VOCATIONAL_TRADES } from './data/coursesData';
 import { AcademicPathway, AlumniInsight, ChatThread, Message, SavedPath, TimelineEvent } from './types';
@@ -1694,6 +1696,40 @@ export default function App() {
     return defaultThreads;
   });
 
+  const [messageToast, setMessageToast] = useState<{
+    id: string;
+    threadId: string;
+    senderName: string;
+    senderAvatar?: string;
+    text: string;
+  } | null>(null);
+
+  const shownToastMsgIdsRef = useRef<Set<string>>(new Set());
+  const isInitialMountDoneRef = useRef<boolean>(false);
+
+  // Mark initially loaded messages as seen so historical messages do not trigger popups on page reload
+  useEffect(() => {
+    chatThreads.forEach(t => {
+      t.messages.forEach(m => {
+        shownToastMsgIdsRef.current.add(m.id);
+      });
+    });
+    const timer = setTimeout(() => {
+      isInitialMountDoneRef.current = true;
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto dismiss toast after 5 seconds
+  useEffect(() => {
+    if (messageToast) {
+      const timer = setTimeout(() => {
+        setMessageToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [messageToast]);
+
   useEffect(() => {
     safeLocalStorage.setItem('dirpa_chat_threads', JSON.stringify(chatThreads));
   }, [chatThreads]);
@@ -1744,7 +1780,7 @@ export default function App() {
               const msgsList: Message[] = [];
               mSnap.forEach(mDoc => {
                 const mData = mDoc.data();
-                msgsList.push({
+                const msgObj: Message = {
                   id: mDoc.id,
                   senderId: mData.senderId || '',
                   senderName: mData.senderName || '',
@@ -1752,7 +1788,26 @@ export default function App() {
                   text: mData.text || '',
                   timestamp: mData.timestamp || '',
                   isRead: mData.isRead ?? true
-                });
+                };
+                msgsList.push(msgObj);
+
+                if (
+                  user &&
+                  msgObj.senderId !== user.id &&
+                  !shownToastMsgIdsRef.current.has(msgObj.id)
+                ) {
+                  shownToastMsgIdsRef.current.add(msgObj.id);
+                  if (isInitialMountDoneRef.current) {
+                    const rawThread = threadsMap[threadId];
+                    setMessageToast({
+                      id: msgObj.id,
+                      threadId,
+                      senderName: msgObj.senderName || rawThread?.alumniName || 'DIRPA Expert Mentor',
+                      senderAvatar: msgObj.senderAvatar || rawThread?.alumniAvatar,
+                      text: msgObj.text
+                    });
+                  }
+                }
               });
 
               setChatThreads(prev => {
@@ -2014,6 +2069,58 @@ export default function App() {
 
   const activeMessages = chatThreads.find(t => t.id === activeThreadId)?.messages;
 
+  const totalUnreadMessages = useMemo(() => {
+    if (!user) return 0;
+    return chatThreads.reduce((total, thread) => {
+      return total + thread.messages.filter(m => !m.isRead && m.senderId !== user.id).length;
+    }, 0);
+  }, [chatThreads, user]);
+
+  // Auto-clear unread status when navigating to or viewing the open chat thread in Messages tab
+  useEffect(() => {
+    if (user && currentView === 'messages' && activeThreadId) {
+      setChatThreads(prev => {
+        let updatedAny = false;
+        const nextThreads = prev.map(t => {
+          if (t.id === activeThreadId) {
+            const hasUnread = t.messages.some(m => !m.isRead && m.senderId !== user.id);
+            if (hasUnread) {
+              updatedAny = true;
+              return {
+                ...t,
+                messages: t.messages.map(m => (m.senderId !== user.id && !m.isRead) ? { ...m, isRead: true } : m)
+              };
+            }
+          }
+          return t;
+        });
+        return updatedAny ? nextThreads : prev;
+      });
+
+      const currentActive = chatThreads.find(t => t.id === activeThreadId);
+      if (currentActive) {
+        currentActive.messages.forEach(async (m) => {
+          if (!m.isRead && m.senderId !== user.id) {
+            try {
+              await setDoc(doc(db, 'conversations', activeThreadId, 'messages', m.id), { isRead: true }, { merge: true });
+            } catch (e) {
+              // Ignore offline fallback
+            }
+          }
+        });
+      }
+    }
+  }, [currentView, activeThreadId, user]);
+
+  const handleOpenMessagesTab = () => {
+    setSelectedNav('messages');
+    setCurrentView('messages');
+    if (!activeThreadId && chatThreads.length > 0) {
+      const unreadThread = chatThreads.find(t => t.messages.some(m => !m.isRead && m.senderId !== user?.id));
+      setActiveThreadId(unreadThread ? unreadThread.id : chatThreads[0].id);
+    }
+  };
+
   useEffect(() => {
     if (currentView === 'messages' && activeThreadId) {
       scrollToBottom();
@@ -2073,6 +2180,8 @@ export default function App() {
   const [feedbackIdBeingDeleted, setFeedbackIdBeingDeleted] = useState<string | null>(null);
   const [commentIdBeingDeleted, setCommentIdBeingDeleted] = useState<string | null>(null);
   const [threadIdBeingDeleted, setThreadIdBeingDeleted] = useState<string | null>(null);
+  const [confirmDeleteModalThreadId, setConfirmDeleteModalThreadId] = useState<string | null>(null);
+  const [isDeletingThread, setIsDeletingThread] = useState<boolean>(false);
 
   // Flowchart specific feedback states
   const [flowchartFeedbackOpen, setFlowchartFeedbackOpen] = useState<boolean>(false);
@@ -3905,6 +4014,17 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
 
+      shownToastMsgIdsRef.current.add(replyId);
+      if (currentView !== 'messages' || activeThreadId !== threadId) {
+        setMessageToast({
+          id: replyId,
+          threadId,
+          senderName: alumniName,
+          senderAvatar: alumniAvatar,
+          text: replyText
+        });
+      }
+
       try {
         const msgRef = doc(db, 'conversations', threadId, 'messages', replyId);
         await setDoc(msgRef, replyMsg);
@@ -3963,17 +4083,22 @@ export default function App() {
 
   const handleDeleteConversation = async (threadId: string) => {
     if (!user) return;
+    setIsDeletingThread(true);
 
     try {
-      await fetch(`/api/conversations/${threadId}`, { method: 'DELETE' });
-      await fetch(`/conversations/${threadId}`, { method: 'DELETE' });
+      await fetch(`/api/conversations/${threadId}`, { method: 'DELETE' }).catch(() => {});
+      await fetch(`/conversations/${threadId}`, { method: 'DELETE' }).catch(() => {});
 
       // Delete conversations and messages in Firestore
-      const msgsSnap = await getDocs(collection(doc(db, 'conversations', threadId), 'messages'));
-      for (const mDoc of msgsSnap.docs) {
-        await deleteDoc(mDoc.ref);
+      try {
+        const msgsSnap = await getDocs(collection(doc(db, 'conversations', threadId), 'messages'));
+        for (const mDoc of msgsSnap.docs) {
+          await deleteDoc(mDoc.ref).catch(() => {});
+        }
+        await deleteDoc(doc(db, 'conversations', threadId)).catch(() => {});
+      } catch (e) {
+        // Fallback for offline or cached mode
       }
-      await deleteDoc(doc(db, 'conversations', threadId));
 
       // Instantly filter out from local state
       setChatThreads(prevThreads => prevThreads.filter(t => t.id !== threadId));
@@ -3984,6 +4109,10 @@ export default function App() {
       console.log("Conversation deleted safely from database.");
     } catch (err) {
       console.error("Failed to delete conversation:", err);
+    } finally {
+      setIsDeletingThread(false);
+      setConfirmDeleteModalThreadId(null);
+      setThreadIdBeingDeleted(null);
     }
   };
 
@@ -5688,16 +5817,18 @@ export default function App() {
                   </li>
                 )}
                 <li 
-                  onClick={() => { setSelectedNav('messages'); setCurrentView('messages'); }}
-                  className={`cursor-pointer pb-1 transition-all ${
+                  onClick={handleOpenMessagesTab}
+                  className={`cursor-pointer pb-1 transition-all flex items-center gap-1.5 ${
                     selectedNav === 'messages' 
                       ? 'text-black border-b-2 border-black opacity-100' 
                       : 'text-gray-500 hover:text-black opacity-60'
                   }`}
                 >
                   Messages
-                  {chatThreads.some(t => t.messages.some(m => !m.isRead && m.senderId !== user.id)) && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-blue-600 text-white rounded-full text-[8px] font-black animate-pulse">!</span>
+                  {totalUnreadMessages > 0 && (
+                    <span className="px-1.5 py-0.5 bg-red-600 text-white rounded-full text-[9px] font-black border border-black shadow-sm animate-pulse">
+                      {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                    </span>
                   )}
                 </li>
                 {user.role !== 'alumni' && (
@@ -5797,12 +5928,19 @@ export default function App() {
           )}
           <button 
             type="button"
-            onClick={() => { setSelectedNav('messages'); setCurrentView('messages'); }}
-            className={`flex flex-col items-center gap-1 text-[10px] uppercase font-bold tracking-tight ${
+            onClick={handleOpenMessagesTab}
+            className={`flex flex-col items-center gap-1 text-[10px] uppercase font-bold tracking-tight relative ${
               selectedNav === 'messages' ? (isDarkMode ? 'text-cyan-400' : 'text-black') : 'text-gray-400'
             }`}
           >
-            <MessageSquare className="w-5 h-5" />
+            <div className="relative">
+              <MessageSquare className="w-5 h-5" />
+              {totalUnreadMessages > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] bg-red-600 text-white rounded-full text-[9px] font-black flex items-center justify-center px-1 border border-black shadow-sm animate-pulse">
+                  {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                </span>
+              )}
+            </div>
             Messages
           </button>
           {user.role !== 'alumni' && (
@@ -5839,6 +5977,146 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {/* ================= INCOMING MESSAGE TOAST NOTIFICATION ================= */}
+      <AnimatePresence>
+        {messageToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-24 right-4 md:right-8 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-96 bg-white border-2 border-black p-4 shadow-[6px_6px_0px_0px_#000] rounded-xl flex items-start gap-3 cursor-pointer hover:bg-amber-50 group"
+            onClick={() => {
+              setSelectedNav('messages');
+              setCurrentView('messages');
+              setActiveThreadId(messageToast.threadId);
+              setMessageToast(null);
+            }}
+          >
+            <div className="w-10 h-10 rounded-full bg-amber-100 border-2 border-black flex items-center justify-center text-lg shrink-0 group-hover:rotate-6 transition-transform overflow-hidden">
+              {messageToast.senderAvatar && (messageToast.senderAvatar.startsWith('http') || messageToast.senderAvatar.startsWith('data:image/')) ? (
+                <img src={messageToast.senderAvatar} alt={messageToast.senderName} className="w-full h-full object-cover" />
+              ) : (
+                messageToast.senderAvatar || '💬'
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping shrink-0" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-black truncate">
+                  New message from {messageToast.senderName}
+                </h4>
+              </div>
+              <p className="text-xs text-gray-700 font-medium line-clamp-2 leading-snug">
+                "{messageToast.text}"
+              </p>
+              <span className="inline-block mt-1.5 text-[10px] font-bold text-blue-600 group-hover:underline">
+                Click to open chat ➔
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMessageToast(null);
+              }}
+              className="p-1 border border-black hover:bg-black hover:text-white transition-colors rounded text-black shrink-0"
+              title="Close notification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= DELETE CONVERSATION CONFIRMATION MODAL ================= */}
+      <AnimatePresence>
+        {confirmDeleteModalThreadId && (() => {
+          const targetThread = chatThreads.find(t => t.id === confirmDeleteModalThreadId);
+          if (!targetThread) return null;
+
+          return (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => {
+                if (!isDeletingThread) setConfirmDeleteModalThreadId(null);
+              }}
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white border-2 border-black p-6 shadow-[8px_8px_0px_0px_#000] max-w-md w-full rounded-2xl relative text-black overflow-hidden"
+              >
+                <button
+                  type="button"
+                  disabled={isDeletingThread}
+                  onClick={() => setConfirmDeleteModalThreadId(null)}
+                  className="absolute top-4 right-4 p-1 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-black disabled:opacity-50 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 border-2 border-black flex items-center justify-center text-red-600 shrink-0 shadow-[2px_2px_0px_0px_#000]">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div className="pr-4">
+                    <h3 className="text-base font-black uppercase tracking-tight text-black leading-snug">
+                      Are you sure you want to delete this conversation?
+                    </h3>
+                    <p className="text-xs text-gray-600 font-medium mt-1.5 leading-relaxed">
+                      All message history with <span className="font-bold text-black underline">{targetThread.alumniName}</span> will be permanently removed.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-300 p-3 rounded-xl mb-6 text-[11px] text-amber-900 font-semibold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                  <span>Prevents accidental data loss. This action cannot be undone.</span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                  <button
+                    type="button"
+                    disabled={isDeletingThread}
+                    onClick={() => setConfirmDeleteModalThreadId(null)}
+                    className="px-4 py-2 border-2 border-black font-bold uppercase text-xs hover:bg-gray-100 bg-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer rounded-lg shadow-[2px_2px_0px_0px_#000]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeletingThread}
+                    onClick={() => handleDeleteConversation(targetThread.id)}
+                    className="px-5 py-2 border-2 border-black font-black uppercase text-xs bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer rounded-lg shadow-[2px_2px_0px_0px_#000]"
+                  >
+                    {isDeletingThread ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>Yes, Delete Conversation</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ================= MAIN SITE ROUTING ================= */}
       <main className="flex-1 pb-28 md:pb-0">
@@ -10104,11 +10382,11 @@ export default function App() {
                           return t;
                         }));
                       }}
-                      className={`p-4 cursor-pointer transition-colors flex items-center gap-3 relative ${isActive ? 'bg-amber-100' : 'hover:bg-amber-50'} ${hasUnread ? 'font-bold' : ''}`}
+                      className={`p-4 cursor-pointer transition-colors flex items-center gap-3 relative group ${isActive ? 'bg-amber-100' : 'hover:bg-amber-50'} ${hasUnread ? 'font-bold' : ''}`}
                     >
-                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-black flex items-center justify-center text-lg">
+                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-black flex items-center justify-center text-lg overflow-hidden shrink-0">
                         {thread.alumniAvatar.startsWith('http') ? (
-                          <img src={thread.alumniAvatar} alt={thread.alumniName} className="w-full h-full object-cover animate-pulse" />
+                          <img src={thread.alumniAvatar} alt={thread.alumniName} className="w-full h-full object-cover" />
                         ) : (
                           thread.alumniAvatar
                         )}
@@ -10126,6 +10404,18 @@ export default function App() {
                           <p className="text-xs text-gray-600 truncate">{lastMessage.text}</p>
                         )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteModalThreadId(thread.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 text-red-600 rounded border border-transparent hover:border-red-300 transition-all shrink-0 cursor-pointer"
+                        title="Delete Conversation"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
 
                       {hasUnread && (
                         <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-blue-600 border border-black"></div>
@@ -10201,39 +10491,20 @@ export default function App() {
                           {matchedAlumni && (
                             <button 
                               onClick={() => setSelectedAlumni(matchedAlumni)}
-                              className="px-3 py-1.5 border border-black text-[10px] font-bold uppercase bg-stone-50 hover:bg-stone-100 cursor-pointer"
+                              className="px-3 py-1.5 border border-black text-[10px] font-bold uppercase bg-stone-50 hover:bg-stone-100 cursor-pointer rounded"
                             >
                               Timeline
                             </button>
                           )}
-                          {threadIdBeingDeleted === activeThread.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => {
-                                  handleDeleteConversation(activeThread.id);
-                                  setThreadIdBeingDeleted(null);
-                                }}
-                                className="px-3 py-1.5 border border-black text-[10px] font-black uppercase bg-red-600 hover:bg-red-700 text-white cursor-pointer"
-                              >
-                                Confirm Delete
-                              </button>
-                              <button
-                                onClick={() => setThreadIdBeingDeleted(null)}
-                                className="px-3 py-1.5 border border-black text-[10px] font-black uppercase bg-stone-200 hover:bg-stone-300 text-black cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setThreadIdBeingDeleted(activeThread.id)}
-                              className="px-3 py-1.5 border border-red-500 text-[10px] font-black uppercase bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer flex items-center gap-1 hover:text-red-700"
-                              title="Delete Conversation"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-600" />
-                              <span>Delete</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteModalThreadId(activeThread.id)}
+                            className="px-3 py-1.5 border border-red-500 text-[10px] font-black uppercase bg-red-50 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer flex items-center gap-1.5 rounded transition-all active:scale-95 shadow-sm"
+                            title="Delete Conversation"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </div>
                     );
