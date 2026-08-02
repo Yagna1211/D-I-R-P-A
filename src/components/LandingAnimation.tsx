@@ -197,15 +197,7 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
                           Dynamic Academic Roadmap Router
                         </span>
                         
-                        {/* Interactive mini progress bar to feel real */}
-                        <div className="w-36 h-2 bg-stone-200 border border-black mt-4 overflow-hidden relative">
-                          <motion.div 
-                            initial={{ width: "0%" }}
-                            animate={{ width: "100%" }}
-                            transition={{ duration: 1.4, ease: "easeInOut" }}
-                            className="h-full bg-amber-450"
-                          />
-                        </div>
+                        
                       </motion.div>
                     )}
 
@@ -246,12 +238,7 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
                             </motion.p>
                           </div>
 
-                          {/* Dynamic visual connection lines */}
-                          <div className="flex items-center gap-1.5 mt-8 font-mono text-xs font-black text-stone-600">
-                            <span>BOOSTER ENGAGED</span>
-                            <ArrowRight className="w-4 h-4 text-[#2563EB] animate-pulse" />
-                            <span className="text-[#2563EB]">LOADING THE ECOSYSTEM</span>
-                          </div>
+                
                         </motion.div>
                       )}
                     </AnimatePresence>

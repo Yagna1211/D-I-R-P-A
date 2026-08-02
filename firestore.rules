@@ -97,13 +97,24 @@ service cloud.firestore {
     // --- Feedbacks Collection ---
     match /feedbacks/{feedbackId} {
       allow read: if true;
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.token.email);
+      allow create: if isSignedIn() || (request.resource.data.userId != null);
       allow update: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.userId == request.auth.token.email ||
         (resource.data.authorEmail != null && resource.data.authorEmail == request.auth.token.email) ||
         request.resource.data.likes != null || 
         request.resource.data.replies != null
+      );
+      allow delete: if isSignedIn();
+    }
+
+    // --- Platform Reviews Collection ---
+    match /platform_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.userId == request.auth.token.email
       );
       allow delete: if isSignedIn();
     }

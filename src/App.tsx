@@ -46,7 +46,9 @@ import {
   Heart,
   Users,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  BarChart3,
+  Quote
 } from 'lucide-react';
 import { ACADEMIC_PATHWAYS, GENERAL_STATISTICS, INTERMEDIATE_GROUPS, POLYTECHNIC_DIPLOMAS, ITI_VOCATIONAL_TRADES } from './data/coursesData';
 import { AcademicPathway, AlumniInsight, ChatThread, Message, SavedPath, TimelineEvent } from './types';
@@ -154,24 +156,38 @@ export const ELIGIBILITY_MATRIX: Record<string, GraduationDegreeOption[]> = {
   ]
 };
 
+export const deriveStreamKey = (stream: string | null): 'MPC' | 'BiPC' | 'MEC_CEC' | 'POLY' | null => {
+  if (!stream) return null;
+  const s = stream.toUpperCase();
+  if (s === 'POLY' || s.startsWith('POLY_') || s.includes('DIPLOMA') || s.includes('POLYTECHNIC') || POLYTECHNIC_DIPLOMAS.some(p => p.id === stream || p.name.toUpperCase() === s)) {
+    return 'POLY';
+  }
+  if (s.includes('MPC') || s.includes('MATH') || s === '001') {
+    return 'MPC';
+  }
+  if (s.includes('BIPC') || s.includes('BPC') || s.includes('BOTANY') || s.includes('ZOOLOGY') || s === '003') {
+    return 'BiPC';
+  }
+  if (s.includes('MEC') || s.includes('CEC') || s.includes('HEC') || s.includes('COMMERCE') || s.includes('ECONOMICS') || s.includes('CIVICS') || s.includes('ARTS') || s.includes('HISTORY')) {
+    return 'MEC_CEC';
+  }
+  return 'MPC';
+};
+
 export const getStreamKey = (name: string): 'MPC' | 'BiPC' | 'MEC_CEC' | 'POLY' | null => {
-  const norm = name.toUpperCase();
-  if (norm.includes('MPC') || norm.includes('MATH')) return 'MPC';
-  if (norm.includes('BIPC') || norm.includes('BIOLOGY')) return 'BiPC';
-  if (norm.includes('CEC') || norm.includes('MEC') || norm.includes('COMMERCE') || norm.includes('ECONOMICS')) return 'MEC_CEC';
-  if (norm.includes('POLYTECHNIC') || norm.includes('DIPLOMA')) return 'POLY';
-  return null;
+  return deriveStreamKey(name);
 };
 
 export const findMatchingGraduationDegree = (
   pathway: AcademicPathway,
-  stream: 'MPC' | 'BiPC' | 'MEC_CEC' | 'POLY' | null
+  stream: string | null
 ): GraduationDegreeOption | null => {
+  const streamKey = deriveStreamKey(stream);
   const normName = pathway.name.toLowerCase();
   
   // Custom manual mappings for precise matching
   if (normName.includes("b.tech") || normName.includes("engineering") || normName.includes("b.e")) {
-    if (stream === 'POLY') {
+    if (streamKey === 'POLY') {
       return ELIGIBILITY_MATRIX.POLY.find(d => d.name.includes("ECET")) || ELIGIBILITY_MATRIX.POLY[0];
     }
     return ELIGIBILITY_MATRIX.MPC.find(d => d.name.toLowerCase().includes("b.tech") || d.name.toLowerCase().includes("b.e")) || null;
@@ -745,10 +761,16 @@ export default function App() {
   const [selectedSpecCourse, setSelectedSpecCourse] = useState<SpecializationCourse | null>(null);
   const [selectedJobDetail, setSelectedJobDetail] = useState<JobDetailInfo | null>(null);
 
-  const [selected12thStream, setSelected12thStream] = useState<'MPC' | 'BiPC' | 'MEC_CEC' | 'POLY' | null>(null);
+  const [selected12thType, setSelected12thType] = useState<'Intermediate' | 'Polytechnic' | null>(null);
+  const [selected12thStream, setSelected12thStream] = useState<string | null>(null);
+  const [interSearchQuery, setInterSearchQuery] = useState<string>('');
+  const [interCategoryFilter, setInterCategoryFilter] = useState<'All' | 'Science' | 'Commerce' | 'Arts'>('All');
+  const [polySearchQuery, setPolySearchQuery] = useState<string>('');
+  const [polyCategoryFilter, setPolyCategoryFilter] = useState<'All' | 'Engineering' | 'Non-Engineering'>('All');
   const [selectedFlowNode, setSelectedFlowNode] = useState<{ id: string; type: 'intermediate' | 'graduation'; name: string; data?: any } | null>(null);
 
   useEffect(() => {
+    setSelected12thType(null);
     setSelected12thStream(null);
   }, [activeLevel]);
 
@@ -756,8 +778,36 @@ export default function App() {
     setSelectedGraduationDegree(null);
     setSelectedSpecCourse(null);
     setSelectedJobDetail(null);
-    setIsGradFunnelActive(false);
   }, [selectedPathway?.id]);
+
+  const handleSelect12thStream = (streamName: string, streamType: 'Intermediate' | 'Polytechnic', details?: any) => {
+    setSelected12thStream(streamName);
+    const streamKey = deriveStreamKey(streamName) || 'MPC';
+    const defaultDegree = ELIGIBILITY_MATRIX[streamKey]?.[0] || null;
+
+    const pathwayObj: AcademicPathway = {
+      id: details?.code || details?.id || 'stream_' + streamName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+      level: '12th',
+      category: streamType === 'Polytechnic' ? (details?.isEngineering ? 'Engineering' : 'Specialized') : (streamKey === 'MPC' ? 'Engineering' : streamKey === 'BiPC' ? 'Medical' : 'Commerce'),
+      name: streamName,
+      duration: streamType === 'Polytechnic' ? '3 Years' : '2 Years',
+      eligibility: details?.subjects ? details.subjects.filter((s: string) => s && s !== '-').join(', ') : 'Completed 10th Standard',
+      subjects: details?.subjects ? details.subjects.filter((s: string) => s && s !== '-') : [streamName],
+      estimatedFees: streamType === 'Polytechnic' ? '₹4,700 - ₹25,000 / year' : '₹5,000 - ₹30,000 / year',
+      description: details?.description || `Completed ${streamType} specialization: ${streamName}. Unlocks targeted university degree tracks.`,
+      futureOpportunities: details?.nextStudies || (streamKey === 'MPC' ? ['B.Tech / B.E', 'B.Arch', 'BCA', 'B.Sc Maths'] : streamKey === 'BiPC' ? ['MBBS', 'BDS', 'B.Pharm', 'B.Sc Agri'] : ['B.Com', 'BBA', 'CA', 'BA LLB']),
+      higherEducationOptions: details?.nextStudies || [],
+      careerOutcomes: details?.nextStudies || [],
+      nodePosition: { x: 50, y: 50 },
+      alumniInsights: []
+    };
+
+    setSelectedPathway(pathwayObj);
+    if (defaultDegree) {
+      setSelectedGraduationDegree(defaultDegree);
+    }
+    setIsGradFunnelActive(true);
+  };
 
   useEffect(() => {
     setSelectedSpecCourse(null);
@@ -1142,9 +1192,10 @@ export default function App() {
     return seeded;
   });
 
-  // Dynamic database-driven feedback states
+  // Independent Feedback States: Course-specific vs Platform-level
+  const [courseReviews, setCourseReviews] = useState<any[]>([]);
+  const [platformReviews, setPlatformReviews] = useState<any[]>([]);
   const [dbFeedbacks, setDbFeedbacks] = useState<any[]>([]);
-  const [allDbFeedbacks, setAllDbFeedbacks] = useState<any[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState<boolean>(false);
 
   // Active filters for database feedback listing
@@ -1154,24 +1205,147 @@ export default function App() {
   const [dbSortOrder, setDbSortOrder] = useState<string>('most_recent');
   const [dbSearchQuery, setDbSearchQuery] = useState<string>('');
 
-  // Dynamic real-time onSnapshot listener to fetch feedbacks directly from Firestore the moment they are updated
+  // Delayed User Feedback Prompt States
+  const [showDelayedFeedbackPrompt, setShowDelayedFeedbackPrompt] = useState<boolean>(false);
+  const [userPromptFeedbackRating, setUserPromptFeedbackRating] = useState<number>(5);
+  const [userPromptFeedbackComment, setUserPromptFeedbackComment] = useState<string>('');
+  const [isSubmittingPromptFeedback, setIsSubmittingPromptFeedback] = useState<boolean>(false);
+  const [promptFeedbackSuccess, setPromptFeedbackSuccess] = useState<boolean>(false);
+
+  // Profile Feedback Form States
+  const [profileFeedbackText, setProfileFeedbackText] = useState<string>('');
+  const [profileFeedbackRating, setProfileFeedbackRating] = useState<number>(5);
+  const [isSubmittingProfileFeedback, setIsSubmittingProfileFeedback] = useState<boolean>(false);
+  const [profileFeedbackSuccess, setProfileFeedbackSuccess] = useState<boolean>(false);
+
+  // Delayed Feedback Prompt effect (triggers 35 seconds after user mounts/logs in if not already dismissed)
+  useEffect(() => {
+    if (!user) return;
+    const isDismissed = sessionStorage.getItem(`dirpa_feedback_dismissed_${user.id}`);
+    if (isDismissed) return;
+
+    const timer = setTimeout(() => {
+      setShowDelayedFeedbackPrompt(true);
+    }, 35000);
+
+    return () => clearTimeout(timer);
+  }, [user?.id]);
+
+  const handleSubmitPromptFeedback = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!userPromptFeedbackComment.trim()) return;
+
+    setIsSubmittingPromptFeedback(true);
+    const newPlatformDoc = {
+      userId: user?.id || 'anonymous',
+      name: user?.name || user?.email?.split('@')[0] || 'DIRPA Student',
+      role: user?.role === 'alumni' ? 'Alumni Mentor' : 'Student',
+      avatar: user?.avatar || '🎓',
+      educationalStage: 'Platform User',
+      feedbackText: userPromptFeedbackComment.trim(),
+      overallRating: userPromptFeedbackRating,
+      type: 'platform',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      const ref = await addDoc(collection(db, 'platform_reviews'), newPlatformDoc);
+      const createdItem = { id: ref.id, feedbackId: ref.id, ...newPlatformDoc };
+
+      setPlatformReviews(prev => [createdItem, ...prev]);
+      setPromptFeedbackSuccess(true);
+      if (user) sessionStorage.setItem(`dirpa_feedback_dismissed_${user.id}`, 'true');
+
+      setTimeout(() => {
+        setShowDelayedFeedbackPrompt(false);
+        setPromptFeedbackSuccess(false);
+        setUserPromptFeedbackComment('');
+      }, 2000);
+    } catch (err) {
+      console.error("Error submitting prompt platform feedback:", err);
+      const localId = 'platform_review_' + Date.now();
+      const createdItem = { id: localId, feedbackId: localId, ...newPlatformDoc };
+      setPlatformReviews(prev => [createdItem, ...prev]);
+      setPromptFeedbackSuccess(true);
+      if (user) sessionStorage.setItem(`dirpa_feedback_dismissed_${user.id}`, 'true');
+      setTimeout(() => {
+        setShowDelayedFeedbackPrompt(false);
+        setPromptFeedbackSuccess(false);
+        setUserPromptFeedbackComment('');
+      }, 2000);
+    } finally {
+      setIsSubmittingPromptFeedback(false);
+    }
+  };
+
+  const handleDismissPromptFeedback = () => {
+    setShowDelayedFeedbackPrompt(false);
+    if (user) {
+      sessionStorage.setItem(`dirpa_feedback_dismissed_${user.id}`, 'true');
+    }
+  };
+
+  const handleSubmitProfileFeedback = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!profileFeedbackText.trim()) return;
+
+    setIsSubmittingProfileFeedback(true);
+    setProfileFeedbackSuccess(false);
+
+    const newPlatformDoc = {
+      userId: user?.id || user?.email || 'anonymous',
+      name: user?.name || user?.email?.split('@')[0] || 'DIRPA Student',
+      role: user?.role === 'alumni' ? 'Alumni Mentor' : 'Student Reviewer',
+      avatar: user?.avatar || '🎓',
+      educationalStage: 'Platform User',
+      feedbackText: profileFeedbackText.trim(),
+      overallRating: profileFeedbackRating,
+      type: 'platform',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      const ref = await addDoc(collection(db, 'platform_reviews'), newPlatformDoc);
+      const createdItem = { id: ref.id, feedbackId: ref.id, ...newPlatformDoc };
+      setPlatformReviews(prev => [createdItem, ...prev]);
+      setProfileFeedbackSuccess(true);
+      setProfileFeedbackText('');
+      setProfileFeedbackRating(5);
+      setTimeout(() => setProfileFeedbackSuccess(false), 4000);
+    } catch (err) {
+      console.error("Error submitting profile platform feedback:", err);
+      const localId = 'platform_review_' + Date.now();
+      const createdItem = { id: localId, feedbackId: localId, ...newPlatformDoc };
+      setPlatformReviews(prev => [createdItem, ...prev]);
+      setProfileFeedbackSuccess(true);
+      setProfileFeedbackText('');
+      setProfileFeedbackRating(5);
+      setTimeout(() => setProfileFeedbackSuccess(false), 4000);
+    } finally {
+      setIsSubmittingProfileFeedback(false);
+    }
+  };
+
+  // Real-time onSnapshot listener to fetch course-specific feedbacks directly from Firestore
   useEffect(() => {
     setFeedbackLoading(true);
     const feedbacksRef = collection(db, "feedbacks");
     
     const unsubscribe = onSnapshot(feedbacksRef, (qSnap) => {
-      const allList: any[] = [];
+      const courseList: any[] = [];
       qSnap.forEach((docSnap) => {
-        allList.push({ id: docSnap.id, feedbackId: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data();
+        if (data.courseId || data.pathwayId || data.type === 'course') {
+          courseList.push({ id: docSnap.id, feedbackId: docSnap.id, ...data });
+        }
       });
 
-      // Sort globally by createdAt descending
-      allList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-      setAllDbFeedbacks(allList);
+      courseList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setCourseReviews(courseList);
       setFeedbackLoading(false);
-      console.log("[Realtime Feedbacks Log] Real-time feedbacks synchronized successfully:", allList.length);
+      console.log("[Realtime Course Feedbacks] Course reviews synchronized successfully:", courseList.length);
     }, (err) => {
-      console.error("Failed to listen to feedbacks from DB directly in real-time:", err);
+      console.error("Failed to listen to course feedbacks:", err);
       handleFirestoreError(err, OperationType.GET, "feedbacks");
       setFeedbackLoading(false);
     });
@@ -1179,9 +1353,31 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Reactive listener to filter, sort, and process allDbFeedbacks whenever any state matches or updates
+  // Real-time onSnapshot listener to fetch platform-level reviews directly from Firestore
   useEffect(() => {
-    let filtered = [...allDbFeedbacks];
+    const platformRef = collection(db, "platform_reviews");
+    
+    const unsubscribe = onSnapshot(platformRef, (qSnap) => {
+      const platformList: any[] = [];
+      qSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        platformList.push({ id: docSnap.id, feedbackId: docSnap.id, ...data });
+      });
+
+      platformList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setPlatformReviews(platformList);
+      console.log("[Realtime Platform Reviews] Platform reviews synchronized successfully:", platformList.length);
+    }, (err) => {
+      console.error("Failed to listen to platform reviews:", err);
+      handleFirestoreError(err, OperationType.GET, "platform_reviews");
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Reactive listener to filter, sort, and process courseReviews whenever filters update
+  useEffect(() => {
+    let filtered = [...courseReviews];
 
     const activeCourseId = selectedSpecCourse
       ? (selectedSpecCourse.id || selectedSpecCourse.code)
@@ -1224,12 +1420,10 @@ export default function App() {
       filtered.sort((a, b) => (b.overallRating || 0) - (a.overallRating || 0));
     } else if (dbSortOrder === "lowest_rated") {
       filtered.sort((a, b) => (a.overallRating || 0) - (b.overallRating || 0));
-    } else {
-      // default: most_recent (already sorted)
     }
 
     setDbFeedbacks(filtered);
-  }, [allDbFeedbacks, dbFilterStage, dbFilterYear, dbFilterInstitution, dbSortOrder, dbSearchQuery, selectedPathway, selectedSpecCourse]);
+  }, [courseReviews, dbFilterStage, dbFilterYear, dbFilterInstitution, dbSortOrder, dbSearchQuery, selectedPathway, selectedSpecCourse]);
 
   const loadAllFeedbacks = async () => {
     // Handled dynamically in real-time by the feedbacks onSnapshot subscriber above!
@@ -1434,7 +1628,7 @@ export default function App() {
 
     return list.map(p => {
       // Find matching live DB feedbacks for this pathway ID or name
-      const matchingDbFeedbacks = allDbFeedbacks.filter(
+      const matchingDbFeedbacks = courseReviews.filter(
         f => isCourseIdEquivalent(f.courseId, p.id) || isCourseIdEquivalent(f.courseId, p.name)
       );
 
@@ -1468,22 +1662,62 @@ export default function App() {
     });
   };
 
-  const isPathwayEligibleForStream = (pathway: AcademicPathway, stream: 'MPC' | 'BiPC' | 'MEC_CEC' | 'POLY' | null) => {
+  const isPathwayEligibleForStream = (pathway: AcademicPathway, stream: string | null) => {
     if (!stream) return true;
+
+    const streamUpper = stream.toUpperCase();
     const elig = (pathway.eligibility || '').toUpperCase();
     const name = (pathway.name || '').toUpperCase();
     const cat = pathway.category;
-    
-    if (stream === 'MPC') {
-      return elig.includes('MPC') || elig.includes('MATH') || cat === 'Engineering' || name.includes('CS') || name.includes('TECH') || name.includes('MATH');
+
+    // Check if polytechnic
+    if (selected12thType === 'Polytechnic' || streamUpper.includes('POLY') || streamUpper.includes('DIPLOMA') || POLYTECHNIC_DIPLOMAS.some(p => p.id === stream || p.name.toUpperCase() === streamUpper)) {
+      const polyMatch = POLYTECHNIC_DIPLOMAS.find(p => p.id === stream || p.name.toUpperCase() === streamUpper);
+      if (polyMatch && !polyMatch.isEngineering) {
+        return cat === 'Specialized' || cat === 'Commerce' || elig.includes('DIPLOMA') || name.includes('DESIGN') || name.includes('ARTS') || name.includes('COMMERCE') || name.includes('MANAGEMENT') || name.includes('BBA');
+      }
+      return elig.includes('DIPLOMA') || elig.includes('LATERAL') || elig.includes('ECET') || cat === 'Engineering' || cat === 'Specialized' || name.includes('B.TECH') || name.includes('ENGINEERING') || name.includes('B.E') || name.includes('BCA');
     }
-    if (stream === 'BiPC') {
-      return elig.includes('BIPC') || elig.includes('BIOLOGY') || cat === 'Medical' || name.includes('MBBS') || name.includes('PHARM') || name.includes('NURSING') || name.includes('SURGERY') || name.includes('AYUSH');
+
+    // Check if intermediate group
+    const interMatch = INTERMEDIATE_GROUPS.find(g => g.code === stream || g.name.toUpperCase() === streamUpper || streamUpper.includes(g.name.toUpperCase()));
+
+    if (interMatch) {
+      const groupCode = interMatch.code;
+      const groupName = interMatch.name.toUpperCase();
+      const subjects = interMatch.subjects.map(s => s.toUpperCase());
+
+      if (groupName.includes('MPC') || (subjects.includes('MATHS-A') && subjects.includes('PHYSICS')) || groupCode === '001') {
+        return elig.includes('MPC') || elig.includes('MATH') || cat === 'Engineering' || name.includes('CS') || name.includes('TECH') || name.includes('MATH') || name.includes('STAT') || name.includes('ARCH') || cat === 'Specialized';
+      }
+
+      if (groupName.includes('BPC') || groupName.includes('BIPC') || (subjects.includes('BOTANY') && subjects.includes('ZOOLOGY')) || groupCode === '003') {
+        return elig.includes('BIPC') || elig.includes('BIOLOGY') || cat === 'Medical' || name.includes('MBBS') || name.includes('PHARM') || name.includes('NURSING') || name.includes('SURGERY') || name.includes('AYUSH') || name.includes('AGRICULTURE') || name.includes('BIOTECH') || cat === 'Specialized';
+      }
+
+      if (groupName.includes('MEC') || groupName.includes('CEC') || subjects.includes('COMMERCE') || subjects.includes('ECONOMICS') || groupCode === '002' || groupCode === '004') {
+        return cat === 'Commerce' || cat === 'Specialized' || elig.includes('CEC') || elig.includes('MEC') || elig.includes('COMMERCE') || name.includes('COMMERCE') || name.includes('BUSINESS') || name.includes('ARTS') || name.includes('LAW') || name.includes('ECONOMY') || name.includes('ECONOMICS') || name.includes('BBA') || name.includes('B.COM') || name.includes('CA');
+      }
+
+      if (groupName.includes('HEC') || subjects.includes('HISTORY') || subjects.includes('CIVICS') || subjects.includes('SOCIOLOGY') || groupCode === '005') {
+        return cat === 'Commerce' || cat === 'Specialized' || name.includes('ARTS') || name.includes('LAW') || name.includes('JOURNALISM') || name.includes('SOCIOLOGY') || name.includes('PSYCHOLOGY') || name.includes('HISTORY');
+      }
+
+      return cat === 'Commerce' || cat === 'Specialized' || true;
     }
-    if (stream === 'MEC_CEC') {
+
+    // Fallback using streamKey
+    const streamKey = deriveStreamKey(stream);
+    if (streamKey === 'MPC') {
+      return elig.includes('MPC') || elig.includes('MATH') || cat === 'Engineering' || name.includes('CS') || name.includes('TECH') || name.includes('MATH') || cat === 'Specialized';
+    }
+    if (streamKey === 'BiPC') {
+      return elig.includes('BIPC') || elig.includes('BIOLOGY') || cat === 'Medical' || name.includes('MBBS') || name.includes('PHARM') || name.includes('NURSING') || name.includes('SURGERY') || name.includes('AYUSH') || cat === 'Specialized';
+    }
+    if (streamKey === 'MEC_CEC') {
       return cat === 'Commerce' || cat === 'Specialized' || elig.includes('CEC') || elig.includes('MEC') || elig.includes('COMMERCE') || name.includes('COMMERCE') || name.includes('BUSINESS') || name.includes('ARTS') || name.includes('LAW') || name.includes('ECONOMY') || name.includes('ECONOMICS');
     }
-    if (stream === 'POLY') {
+    if (streamKey === 'POLY') {
       return elig.includes('DIPLOMA') || elig.includes('LATERAL') || elig.includes('ECET') || cat === 'Engineering' || cat === 'Specialized';
     }
     return true;
@@ -3107,10 +3341,11 @@ export default function App() {
   };
 
   const handleLikeComment = async (pathwayId: string, commentId: string) => {
-    const feedbackDoc = allDbFeedbacks.find(f => (f.feedbackId === commentId || f.id === commentId));
+    const feedbackDoc = [...courseReviews, ...platformReviews].find(f => (f.feedbackId === commentId || f.id === commentId));
     const currentLikes = Number(feedbackDoc?.likes || 0);
     try {
-      const feedbackRef = doc(db, "feedbacks", commentId);
+      const targetCol = platformReviews.some(f => (f.feedbackId === commentId || f.id === commentId)) ? "platform_reviews" : "feedbacks";
+      const feedbackRef = doc(db, targetCol, commentId);
       await setDoc(feedbackRef, {
         likes: currentLikes + 1
       }, { merge: true });
@@ -3131,14 +3366,15 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const feedbackDoc = allDbFeedbacks.find(f => (f.feedbackId === commentId || f.id === commentId));
+    const feedbackDoc = [...courseReviews, ...platformReviews].find(f => (f.feedbackId === commentId || f.id === commentId));
     const currentReplies = feedbackDoc?.replies || [];
     const targetReplies = [...currentReplies, newReply];
 
     setCommentReplyInputs(prev => ({ ...prev, [commentId]: '' }));
 
     try {
-      const feedbackRef = doc(db, "feedbacks", commentId);
+      const targetCol = platformReviews.some(f => (f.feedbackId === commentId || f.id === commentId)) ? "platform_reviews" : "feedbacks";
+      const feedbackRef = doc(db, targetCol, commentId);
       await setDoc(feedbackRef, {
         replies: targetReplies
       }, { merge: true });
@@ -3357,7 +3593,7 @@ export default function App() {
       pdfInstance.setFont('courier', 'bold');
       pdfInstance.setFontSize(4.2);
       pdfInstance.setTextColor(37, 99, 235); // Blue-600
-      pdfInstance.text('DYNAMIC ADVISOR', cx + 5, cy + 3.2);
+      pdfInstance.text('DISCOVER YOUR PATH!', cx + 5, cy + 3.2);
     };
 
     try {
@@ -5113,12 +5349,7 @@ export default function App() {
                   </span>
                 </div>
               )}
-              <button
-                onClick={() => setIsMapFullScreen(!isFullScreen)}
-                className="px-3 py-1 border-2 border-black bg-white dark:bg-zinc-800 text-[10px] text-black dark:text-white font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.08)] active:translate-y-0.5 transition-transform"
-              >
-                {isFullScreen ? "Close Focus View ✕" : "Focus Screen Mode ⛶"}
-              </button>
+              
             </div>
           </div>
 
@@ -5452,131 +5683,357 @@ export default function App() {
             <div className="space-y-8">
               {!selected12thStream ? (
                 <div className="border-2 border-black bg-white dark:bg-zinc-900 p-6 md:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left space-y-6">
-                  <div className="border-b border-black/15 dark:border-zinc-850 pb-4">
-                    <span className="text-[10px] font-mono font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 px-2.5 py-1 rounded uppercase tracking-wide">
-                      // CUSTOM PATHWAY FILTER CONFIGURATION
-                    </span>
-                    <h3 className="text-2xl font-display font-black uppercase text-gray-900 dark:text-zinc-50 mt-2.5">
-                      What course did you study in Class 12th / Intermediate?
-                    </h3>
-                    <p className="text-xs text-stone-500 dark:text-zinc-400 mt-1">
-                      Choose your stream to instantly filter the graduation programs, lateral entrance criteria, and career outcomes you qualify for below.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* MPC Code block */}
-                    <div 
-                      onClick={() => setSelected12thStream('MPC')}
-                      className="border-2 border-black p-5 bg-white hover:bg-indigo-50/40 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 animate-once"
-                    >
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <span className="text-[10px] font-mono font-black text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-900 px-2.5 py-0.5 uppercase tracking-wider">
-                            Science Group (MPC)
-                          </span>
-                          <span className="text-3xl">📐</span>
-                        </div>
-                        <h4 className="text-base font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-3">
-                          Intermediate MPC
-                        </h4>
-                        <p className="text-xs font-semibold text-stone-600 dark:text-zinc-400 mt-1">
-                          Mathematics, Physics, Chemistry
-                        </p>
-                        <p className="text-xs text-stone-500 dark:text-zinc-350 mt-2 leading-relaxed">
-                          Unlocks engineering programs (B.Tech/BE), aviation (commercial pilot), naval academies, architecture (B.Arch), statistics, and computer applications (BCA).
+                  {selected12thType === null ? (
+                    /* STEP 1: ROUTING QUESTION */
+                    <div className="space-y-6">
+                      <div className="border-b border-black/15 dark:border-zinc-850 pb-4">
+                        <span className="text-[10px] font-mono font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 px-2.5 py-1 rounded uppercase tracking-wide">
+                          // STEP 1: POST-10TH PATHWAY BRANCHING
+                        </span>
+                        <h3 className="text-2xl md:text-3xl font-display font-black uppercase text-gray-900 dark:text-zinc-50 mt-2.5">
+                          What did you complete after 10th class?
+                        </h3>
+                        <p className="text-xs text-stone-500 dark:text-zinc-400 mt-1">
+                          Select the educational pathway you completed after 10th Class (SSC) to filter eligible graduation courses and technical degree programs.
                         </p>
                       </div>
-                      <div className="mt-4 pt-3 border-t border-dashed border-stone-200 dark:border-zinc-800 text-[10px] font-mono font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center justify-between">
-                        <span>Select MPC Pathway ➔</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Option 1: Intermediate */}
+                        <div 
+                          onClick={() => setSelected12thType('Intermediate')}
+                          className="border-2 border-black p-6 bg-sky-50/50 hover:bg-sky-100/70 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-mono font-black text-sky-800 dark:text-sky-300 bg-sky-100 dark:bg-sky-950 border border-sky-300 dark:border-sky-900 px-2.5 py-0.5 uppercase tracking-wider rounded">
+                                ACADEMIC STREAM (2 YEARS)
+                              </span>
+                              <span className="text-3xl">🏫</span>
+                            </div>
+                            <h4 className="text-xl font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-4">
+                              Intermediate
+                            </h4>
+                            <p className="text-xs font-semibold text-stone-600 dark:text-zinc-400 mt-1">
+                              General Higher Secondary Education (11th & 12th Class)
+                            </p>
+                            <p className="text-xs text-stone-600 dark:text-zinc-350 mt-3 leading-relaxed">
+                              Standard 2-year junior college stream covering Science (MPC, BiPC) or Commerce & Arts (MEC, CEC) leading to standard university entrance exams and degrees.
+                            </p>
+                          </div>
+                          <div className="mt-6 pt-3 border-t border-dashed border-sky-200 dark:border-zinc-800 text-xs font-mono font-black text-sky-700 dark:text-sky-400 uppercase flex items-center justify-between">
+                            <span>Select Intermediate Stream ➔</span>
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+
+                        {/* Option 2: Polytechnic */}
+                        <div 
+                          onClick={() => setSelected12thType('Polytechnic')}
+                          className="border-2 border-black p-6 bg-violet-50/50 hover:bg-violet-100/70 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-mono font-black text-violet-800 dark:text-violet-300 bg-violet-100 dark:bg-violet-950 border border-violet-300 dark:border-violet-900 px-2.5 py-0.5 uppercase tracking-wider rounded">
+                                TECHNICAL DIPLOMA (3 YEARS)
+                              </span>
+                              <span className="text-3xl">⚙️</span>
+                            </div>
+                            <h4 className="text-xl font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-4">
+                              Polytechnic
+                            </h4>
+                            <p className="text-xs font-semibold text-stone-600 dark:text-zinc-400 mt-1">
+                              Technical & Engineering Diploma Branches
+                            </p>
+                            <p className="text-xs text-stone-600 dark:text-zinc-350 mt-3 leading-relaxed">
+                              3-year technical diploma program (Computer Engineering, ECE, Civil, Mechanical, EEE) unlocking direct 2nd Year Lateral Entry into B.Tech via ECET.
+                            </p>
+                          </div>
+                          <div className="mt-6 pt-3 border-t border-dashed border-violet-200 dark:border-zinc-800 text-xs font-mono font-black text-violet-700 dark:text-violet-400 uppercase flex items-center justify-between">
+                            <span>Select Polytechnic Branch ➔</span>
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-                    {/* BiPC Code block */}
-                    <div 
-                      onClick={() => setSelected12thStream('BiPC')}
-                      className="border-2 border-black p-5 bg-white hover:bg-emerald-50/40 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 animate-once"
-                    >
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <span className="text-[10px] font-mono font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 border border-emerald-250 dark:border-emerald-900 px-2.5 py-0.5 uppercase tracking-wider">
-                            Medicine Group (BiPC)
+                  ) : selected12thType === 'Intermediate' ? (
+                    /* STEP 2A: DYNAMIC INTERMEDIATE STREAM OPTIONS (85 GROUPS) */
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-black/15 dark:border-zinc-850 pb-4">
+                        <div>
+                          <span className="text-[10px] font-mono font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 px-2.5 py-1 rounded uppercase tracking-wide">
+                            // STEP 2: INTERMEDIATE GROUPS ({INTERMEDIATE_GROUPS.length} COURSES)
                           </span>
-                          <span className="text-3xl">🧬</span>
+                          <h3 className="text-2xl font-display font-black uppercase text-gray-900 dark:text-zinc-50 mt-2">
+                            Select your Intermediate Stream / Group
+                          </h3>
+                          <p className="text-xs text-stone-500 dark:text-zinc-400 mt-1">
+                            Select the specific group combination completed in 11th & 12th class (SSC Higher Secondary) to filter eligible university degree admissions.
+                          </p>
                         </div>
-                        <h4 className="text-base font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-3">
-                          Intermediate BiPC
-                        </h4>
-                        <p className="text-xs font-semibold text-stone-600 dark:text-zinc-400 mt-1">
-                          Biology, Physics, Chemistry
-                        </p>
-                        <p className="text-xs text-stone-500 dark:text-zinc-350 mt-2 leading-relaxed">
-                          Unlocks medicine (MBBS, BDS), Ayurveda & Homeopathy (AYUSH), pharmacy sciences (B.Pharm), agricultural sciences, biotechnology, and clinical nursing.
-                        </p>
+                        <button
+                          onClick={() => setSelected12thType(null)}
+                          className="px-3.5 py-1.5 border-2 border-black text-xs font-mono font-black bg-white dark:bg-zinc-800 hover:bg-stone-100 text-black dark:text-white uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 transition-all cursor-pointer shrink-0"
+                        >
+                          ← Back to Qualification Type
+                        </button>
                       </div>
-                      <div className="mt-4 pt-3 border-t border-dashed border-stone-200 dark:border-zinc-800 text-[10px] font-mono font-black text-emerald-600 dark:text-emerald-400 uppercase flex items-center justify-between">
-                        <span>Select BiPC Pathway ➔</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+
+                      {/* Search & Category Filter Header for 85 Intermediate Groups */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-50 dark:bg-zinc-800/80 p-3 border-2 border-black">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={interSearchQuery}
+                            onChange={(e) => setInterSearchQuery(e.target.value)}
+                            placeholder="Search 85 Intermediate groups (e.g., MPC, MEC, BPC, CEC, HEC, Code 001, Telugu, Logic)..."
+                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-zinc-900 text-black dark:text-white text-xs border-2 border-black focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-medium placeholder:text-stone-400"
+                          />
+                          <span className="absolute left-3 top-2.5 text-stone-400 text-xs">🔍</span>
+                          {interSearchQuery && (
+                            <button
+                              onClick={() => setInterSearchQuery('')}
+                              className="absolute right-3 top-2 text-stone-400 hover:text-black dark:hover:text-white text-xs font-bold"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                          {(['All', 'Science', 'Commerce', 'Arts'] as const).map((cat) => (
+                            <button
+                              key={cat}
+                              onClick={() => setInterCategoryFilter(cat)}
+                              className={`px-3 py-1.5 text-[10px] font-mono font-black uppercase border-2 transition-all cursor-pointer ${
+                                interCategoryFilter === cat
+                                  ? 'bg-black text-white dark:bg-white dark:text-black border-black'
+                                  : 'bg-white text-black dark:bg-zinc-900 dark:text-zinc-300 border-stone-300 dark:border-zinc-700 hover:border-black'
+                              }`}
+                            >
+                              {cat === 'All' ? `All Groups (${INTERMEDIATE_GROUPS.length})` : cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Scrollable Mapped Intermediate Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[560px] overflow-y-auto p-1 pr-2 scrollbar-thin">
+                        {INTERMEDIATE_GROUPS.filter(g => {
+                          const query = interSearchQuery.toLowerCase().trim();
+                          const matchesSearch = !query || 
+                            g.name.toLowerCase().includes(query) ||
+                            g.code.includes(query) ||
+                            g.subjects.some(s => s.toLowerCase().includes(query)) ||
+                            g.nextStudies.some(n => n.toLowerCase().includes(query));
+
+                          if (!matchesSearch) return false;
+
+                          if (interCategoryFilter === 'Science') {
+                            return ['001', '003', '019', '020'].includes(g.code) || g.name.includes('MPC') || g.name.includes('BPC') || g.name.includes('PHY') || g.subjects.includes('Maths-A') || g.subjects.includes('Botany');
+                          }
+                          if (interCategoryFilter === 'Commerce') {
+                            return g.subjects.includes('Commerce') || g.subjects.includes('Economics') || g.name.includes('MEC') || g.name.includes('CEC') || g.name.includes('ECH') || g.name.includes('ECG');
+                          }
+                          if (interCategoryFilter === 'Arts') {
+                            return g.subjects.includes('History') || g.subjects.includes('Civics') || g.subjects.includes('Sociology') || g.subjects.includes('Psychology') || g.name.includes('HEC') || g.name.includes('HCML');
+                          }
+                          return true;
+                        }).map((group) => {
+                          let badgeStyle = "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-800";
+                          let hoverBorder = "hover:border-sky-600";
+                          let icon = "📚";
+
+                          if (group.name.includes('MPC') || group.subjects.includes('Maths-A') || group.code === '001') {
+                            badgeStyle = "bg-indigo-100 text-indigo-900 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-800";
+                            hoverBorder = "hover:border-indigo-600";
+                            icon = "📐";
+                          } else if (group.name.includes('BPC') || group.subjects.includes('Botany') || group.code === '003') {
+                            badgeStyle = "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800";
+                            hoverBorder = "hover:border-emerald-600";
+                            icon = "🧬";
+                          } else if (group.name.includes('MEC') || group.name.includes('CEC') || group.subjects.includes('Commerce') || group.code === '002' || group.code === '004') {
+                            badgeStyle = "bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-950 dark:text-pink-200 dark:border-pink-800";
+                            hoverBorder = "hover:border-pink-600";
+                            icon = "📊";
+                          } else if (group.name.includes('HEC') || group.subjects.includes('History')) {
+                            badgeStyle = "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800";
+                            hoverBorder = "hover:border-amber-600";
+                            icon = "🏛️";
+                          }
+
+                          const activeSubjects = group.subjects.filter(s => s && s !== '-');
+
+                          return (
+                            <div
+                              key={group.code}
+                              onClick={() => handleSelect12thStream(group.name, 'Intermediate', group)}
+                              className={`border-2 border-black p-4 bg-white dark:bg-zinc-850 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 ${hoverBorder}`}
+                            >
+                              <div>
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className={`text-[9px] font-mono font-black border px-2 py-0.5 uppercase tracking-wider rounded ${badgeStyle}`}>
+                                    Code: {group.code}
+                                  </span>
+                                  <span className="text-xl shrink-0">{icon}</span>
+                                </div>
+
+                                <h4 className="text-base font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-2.5">
+                                  {group.name}
+                                </h4>
+
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {activeSubjects.map((sub, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="text-[9.5px] font-mono font-extrabold bg-stone-100 dark:bg-zinc-900 text-stone-700 dark:text-zinc-300 px-1.5 py-0.5 border border-stone-200 dark:border-zinc-700 rounded"
+                                    >
+                                      {sub}
+                                    </span>
+                                  ))}
+                                </div>
+
+                                <p className="text-[11px] text-stone-600 dark:text-zinc-350 mt-3 leading-snug line-clamp-2">
+                                  <span className="font-bold text-black dark:text-white">Unlocks: </span>
+                                  {group.nextStudies.join(', ')}
+                                </p>
+                              </div>
+
+                              <div className="mt-4 pt-2.5 border-t border-dashed border-stone-200 dark:border-zinc-800 text-[10px] font-mono font-black text-indigo-700 dark:text-indigo-400 uppercase flex items-center justify-between">
+                                <span>Select {group.name} ➔</span>
+                                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    {/* MEC_CEC Code block */}
-                    <div 
-                      onClick={() => setSelected12thStream('MEC_CEC')}
-                      className="border-2 border-black p-5 bg-white hover:bg-pink-50/40 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 animate-once"
-                    >
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <span className="text-[10px] font-mono font-black text-pink-800 dark:text-pink-300 bg-pink-50 dark:bg-pink-950 border border-pink-205 dark:border-pink-900 px-2.5 py-0.5 uppercase tracking-wider">
-                            Commerce Group (MEC/CEC)
+                  ) : (
+                    /* STEP 2B: DYNAMIC POLYTECHNIC DIPLOMA BRANCH OPTIONS (28 DIPLOMAS) */
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-black/15 dark:border-zinc-850 pb-4">
+                        <div>
+                          <span className="text-[10px] font-mono font-black text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 px-2.5 py-1 rounded uppercase tracking-wide">
+                            // STEP 2: POLYTECHNIC / DIPLOMA BRANCHES ({POLYTECHNIC_DIPLOMAS.length} COURSES)
                           </span>
-                          <span className="text-3xl">📊</span>
+                          <h3 className="text-2xl font-display font-black uppercase text-gray-900 dark:text-zinc-50 mt-2">
+                            Select your Polytechnic / Diploma Branch
+                          </h3>
+                          <p className="text-xs text-stone-500 dark:text-zinc-400 mt-1">
+                            Choose your 3-year technical diploma program completed after 10th class (SSC) to explore direct B.Tech 2nd Year Lateral Entry (via ECET) and degree opportunities.
+                          </p>
                         </div>
-                        <h4 className="text-base font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-3">
-                          Intermediate MEC / CEC
-                        </h4>
-                        <p className="text-xs font-semibold text-stone-600 dark:text-zinc-400 mt-1">
-                          Civics, Economics, Commerce
-                        </p>
-                        <p className="text-xs text-stone-500 dark:text-zinc-350 mt-2 leading-relaxed">
-                          Unlocks Chartered Accountancy (CA), Company Secretary (CS), Business Administration (BBA), corporate accounts (B.Com), and Integrated Law (BA LLB).
-                        </p>
+                        <button
+                          onClick={() => setSelected12thType(null)}
+                          className="px-3.5 py-1.5 border-2 border-black text-xs font-mono font-black bg-white dark:bg-zinc-800 hover:bg-stone-100 text-black dark:text-white uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 transition-all cursor-pointer shrink-0"
+                        >
+                          ← Back to Qualification Type
+                        </button>
                       </div>
-                      <div className="mt-4 pt-3 border-t border-dashed border-stone-200 dark:border-zinc-800 text-[10px] font-mono font-black text-pink-650 dark:text-pink-400 uppercase flex items-center justify-between">
-                        <span>Select MEC/CEC Pathway ➔</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+
+                      {/* Search & Category Filter Header for 28 Polytechnic Courses */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-purple-50/60 dark:bg-zinc-800/80 p-3 border-2 border-black">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={polySearchQuery}
+                            onChange={(e) => setPolySearchQuery(e.target.value)}
+                            placeholder="Search 28 Diploma branches (e.g., Computer, Civil, Mechanical, ECE, Fashion, Cosmetology)..."
+                            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-zinc-900 text-black dark:text-white text-xs border-2 border-black focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono font-medium placeholder:text-stone-400"
+                          />
+                          <span className="absolute left-3 top-2.5 text-stone-400 text-xs">⚙️</span>
+                          {polySearchQuery && (
+                            <button
+                              onClick={() => setPolySearchQuery('')}
+                              className="absolute right-3 top-2 text-stone-400 hover:text-black dark:hover:text-white text-xs font-bold"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                          {(['All', 'Engineering', 'Non-Engineering'] as const).map((cat) => (
+                            <button
+                              key={cat}
+                              onClick={() => setPolyCategoryFilter(cat)}
+                              className={`px-3 py-1.5 text-[10px] font-mono font-black uppercase border-2 transition-all cursor-pointer ${
+                                polyCategoryFilter === cat
+                                  ? 'bg-purple-900 text-white dark:bg-purple-400 dark:text-black border-black'
+                                  : 'bg-white text-black dark:bg-zinc-900 dark:text-zinc-300 border-stone-300 dark:border-zinc-700 hover:border-black'
+                              }`}
+                            >
+                              {cat === 'All' ? `All Diplomas (${POLYTECHNIC_DIPLOMAS.length})` : cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Scrollable Mapped Polytechnic Diploma Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[560px] overflow-y-auto p-1 pr-2 scrollbar-thin">
+                        {POLYTECHNIC_DIPLOMAS.filter(p => {
+                          const query = polySearchQuery.toLowerCase().trim();
+                          const matchesSearch = !query ||
+                            p.name.toLowerCase().includes(query) ||
+                            p.description.toLowerCase().includes(query) ||
+                            p.lateralBTech.toLowerCase().includes(query);
+
+                          if (!matchesSearch) return false;
+
+                          if (polyCategoryFilter === 'Engineering') return p.isEngineering;
+                          if (polyCategoryFilter === 'Non-Engineering') return !p.isEngineering;
+                          return true;
+                        }).map((diploma) => {
+                          const isEng = diploma.isEngineering;
+
+                          return (
+                            <div
+                              key={diploma.id}
+                              onClick={() => handleSelect12thStream(diploma.name, 'Polytechnic', diploma)}
+                              className="border-2 border-black p-4 bg-white dark:bg-zinc-850 hover:bg-purple-50/40 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            >
+                              <div>
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className={`text-[9px] font-mono font-black border px-2 py-0.5 uppercase tracking-wider rounded ${
+                                    isEng
+                                      ? "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800"
+                                      : "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800"
+                                  }`}>
+                                    {isEng ? "⚙️ ENGINEERING" : "🎨 DESIGN / SPECIAL"}
+                                  </span>
+                                  <span className="text-xl shrink-0">{isEng ? "🔧" : "🎨"}</span>
+                                </div>
+
+                                <h4 className="text-base font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-2.5">
+                                  {diploma.name}
+                                </h4>
+
+                                <p className="text-[11.5px] text-stone-600 dark:text-zinc-350 mt-2 leading-relaxed">
+                                  {diploma.description}
+                                </p>
+
+                                {diploma.lateralBTech && (
+                                  <div className="mt-3 p-2 bg-stone-50 dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded">
+                                    <span className="text-[9px] font-mono font-black text-purple-700 dark:text-purple-400 block uppercase">
+                                      ⚡ Lateral B.Tech Pathway:
+                                    </span>
+                                    <p className="text-[10px] text-stone-600 dark:text-zinc-400 font-medium leading-tight mt-0.5">
+                                      {diploma.lateralBTech}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="mt-4 pt-2.5 border-t border-dashed border-stone-200 dark:border-zinc-800 text-[10px] font-mono font-black text-purple-700 dark:text-purple-400 uppercase flex items-center justify-between">
+                                <span>Select {diploma.name} ➔</span>
+                                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    {/* POLY Code block */}
-                    <div 
-                      onClick={() => setSelected12thStream('POLY')}
-                      className="border-2 border-black p-5 bg-white hover:bg-purple-50/40 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 animate-once"
-                    >
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <span className="text-[10px] font-mono font-black text-purple-800 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-900 px-2.5 py-0.5 uppercase tracking-wider">
-                            Diploma (Polytechnic)
-                          </span>
-                          <span className="text-3xl">⚙️</span>
-                        </div>
-                        <h4 className="text-base font-display font-black uppercase text-stone-900 dark:text-zinc-50 mt-3">
-                          Polytechnic Diploma
-                        </h4>
-                        <p className="text-xs font-semibold text-stone-600 dark:text-zinc-400 mt-1">
-                          Engineering or Non-Engineering Diplomas
-                        </p>
-                        <p className="text-xs text-stone-500 dark:text-zinc-350 mt-2 leading-relaxed">
-                          Unlocks B.Tech 2nd Year direct Lateral Entry (via ECET exam), AMIE certification, and technical research careers.
-                        </p>
-                      </div>
-                      <div className="mt-4 pt-3 border-t border-dashed border-stone-200 dark:border-zinc-800 text-[10px] font-mono font-black text-purple-600 dark:text-purple-400 uppercase flex items-center justify-between">
-                        <span>Select Polytechnic Pathway ➔</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ) : !hasAny12th ? (
                 <div className="border-2 border-black p-6 bg-white dark:bg-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4">
@@ -5591,7 +6048,7 @@ export default function App() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setSelected12thStream(null)}
+                      onClick={() => { setSelected12thStream(null); setSelected12thType(null); }}
                       className="px-3.5 py-1.5 border border-black text-[10px] font-mono font-extrabold bg-white dark:bg-zinc-700 dark:text-white hover:bg-stone-50 uppercase tracking-wider shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 transition-all cursor-pointer shrink-0"
                     >
                       🔄 Switch 12th Course Stream
@@ -5626,7 +6083,7 @@ export default function App() {
                       </div>
                     </div>
                     <button
-                      onClick={() => setSelected12thStream(null)}
+                      onClick={() => { setSelected12thStream(null); setSelected12thType(null); }}
                       className="px-3.5 py-1.5 border-2 border-black text-[10px] font-mono font-extrabold bg-white hover:bg-stone-100 text-black uppercase tracking-wider shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 transition-all cursor-pointer shrink-0"
                     >
                       🔄 Change 12th Stream
@@ -7355,7 +7812,7 @@ export default function App() {
 
                         {/* 12th Choice node trigger */}
                         <div 
-                          onClick={() => { setActiveLevel('12th'); setSelectedPathway(null); }}
+                          onClick={() => { setActiveLevel('12th'); setSelectedPathway(null); setSelected12thType(null); setSelected12thStream(null); }}
                           className={`border-2 border-black p-6 bg-white transition-all cursor-pointer relative group shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none ${activeLevel === '12th' ? 'bg-indigo-50 border-dashed ring-2 ring-black shadow-none translate-x-0.5 translate-y-0.5' : 'hover:bg-slate-50'}`}
                         >
                           <span className="absolute top-4 right-4 text-3xl opacity-15 font-serif italic font-bold">02</span>
@@ -8912,13 +9369,64 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Horizontal Engagement Statistics Banner */}
+                  <div id="horizontal-engagement-stats-bar" className="w-full border-2 border-black bg-white dark:bg-zinc-900 p-5 md:p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] rounded-xl mt-8 transition-all">
+                    <div className="flex items-center justify-between border-b-2 border-black/10 dark:border-white/10 pb-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-display font-black uppercase tracking-wider text-black dark:text-white">
+                          Engagement Statistics Overview
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-stone-500 uppercase">DIRPA Ecosystem Telemetry</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-200 dark:divide-zinc-800">
+                      <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
+                          Active Students
+                        </span>
+                        <span id="stat-active-students-banner" className="text-2xl md:text-3xl font-display font-black text-black dark:text-white">
+                          {totalStudents}
+                        </span>
+                      </div>
+
+                      <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
+                          Verified Alumni Mentors
+                        </span>
+                        <span id="stat-verified-alumni-banner" className="text-2xl md:text-3xl font-display font-black text-emerald-600 dark:text-emerald-400">
+                          {totalAlumniMentors}
+                        </span>
+                      </div>
+
+                      <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
+                          Contributed Insights
+                        </span>
+                        <span id="stat-insights-banner" className="text-2xl md:text-3xl font-display font-black text-purple-600 dark:text-purple-400">
+                          {totalContributedInsights}
+                        </span>
+                      </div>
+
+                      <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
+                          Mentorship Messages
+                        </span>
+                        <span id="stat-messages-banner" className="text-2xl md:text-3xl font-display font-black text-blue-600 dark:text-blue-400">
+                          {chatThreads.reduce((sum, t) => sum + (t.messages || []).length, 0)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </>
           )}
         </div>
 
-            {/* Right Sidebar - 1 Column (Statistics & AI Personalized Suggesters) */}
+            {/* Right Sidebar - 1 Column */}
             {!isComparing && (
               <div className="space-y-8">
 
@@ -8946,39 +9454,6 @@ export default function App() {
                   <p className="text-xs text-stone-500 dark:text-zinc-400 leading-normal">
                     Evaluate and analyze subjects, tuition offsets, semester modules, and graduation placements side-by-side.
                   </p>
-                </div>
-              </div>
-
-              {/* Stat panel header matching design specs */}
-              <div className="border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <div className="p-4 bg-black text-white border-b border-black text-center">
-                  <span className="text-xs tracking-wider uppercase font-bold font-display">Engagement statistics</span>
-                </div>
-                <div className="p-6 divide-y divide-gray-200">
-                  <div className="py-4 flex justify-between items-center">
-                    <span className="text-xs uppercase font-bold text-gray-500">Mentorship Messages</span>
-                    <span id="stat-messages-sidebar" className="text-xl font-display font-black italic text-blue-600">
-                      {chatThreads.reduce((sum, t) => sum + (t.messages || []).length, 0)}
-                    </span>
-                  </div>
-                  <div className="py-4 flex justify-between items-center">
-                    <span className="text-xs uppercase font-bold text-gray-500">Active Students</span>
-                    <span id="stat-active-students-sidebar" className="text-xl font-display font-black italic">
-                      {totalStudents}
-                    </span>
-                  </div>
-                  <div className="py-4 flex justify-between items-center">
-                    <span className="text-xs uppercase font-bold text-gray-500">Verified Alumni Mentors</span>
-                    <span id="stat-verified-alumni-sidebar" className="text-xl font-display font-black italic text-emerald-600">
-                      {totalAlumniMentors}
-                    </span>
-                  </div>
-                  <div className="py-4 flex justify-between items-center">
-                    <span className="text-xs uppercase font-bold text-gray-500">Contributed Insights / Paths</span>
-                    <span id="stat-insights-sidebar" className="text-xl font-display font-black italic text-purple-600">
-                      {totalContributedInsights}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -9666,16 +10141,7 @@ export default function App() {
                       >
                         ← Back to Eligible Graduation Degrees grid
                       </button>
-                      <button 
-                        onClick={() => {
-                          setSelectedPathway(null);
-                          setSelectedGraduationDegree(null);
-                          setIsGradFunnelActive(false);
-                        }}
-                        className="px-6 py-3 bg-rose-600 hover:bg-rose-700 border-2 border-black font-display font-black text-xs uppercase text-white tracking-wider flex items-center justify-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer"
-                      >
-                        ❌ Back to 12th Courses List
-                      </button>
+                      
                     </div>
 
                     <div className="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
@@ -9783,10 +10249,17 @@ export default function App() {
                     {/* Top Back navigation */}
                     <div className="flex justify-start mb-2">
                       <button 
-                        onClick={() => setIsGradFunnelActive(false)}
+                        onClick={() => {
+                          setIsGradFunnelActive(false);
+                          setSelectedPathway(null);
+                          setSelected12thStream(null);
+                          setSelectedGraduationDegree(null);
+                          setSelectedSpecCourse(null);
+                          setSelectedJobDetail(null);
+                        }}
                         className="px-6 py-3 bg-[#0F172A] text-white hover:bg-black border-2 border-black font-display font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer"
                       >
-                        ← Back to Pathways Dashboard
+                        ← Back to Stream / Group Selection
                       </button>
                     </div>
 
@@ -9920,14 +10393,6 @@ export default function App() {
                     </div>
                     
                     <div className="flex gap-2 flex-wrap md:flex-nowrap">
-                      <button 
-                        onClick={() => window.open(window.location.origin + window.location.pathname + "?pathway=" + selectedPathway.id, '_blank')}
-                        className="p-3 bg-blue-600 border-2 border-white text-white text-xs font-black uppercase transition-transform hover:scale-105 flex items-center"
-                        title="Open Pathway in New Tab"
-                      >
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        Open In New Tab
-                      </button>
                       <button 
                         onClick={() => toggleSavePath(selectedPathway.id)}
                         className={`p-3 border-2 border-white text-xs font-bold uppercase transition-transform hover:scale-105 flex items-center ${savedPathIds.includes(selectedPathway.id) ? 'bg-yellow-300 text-black border-yellow-300 font-extrabold' : 'bg-transparent text-white'}`}
@@ -10678,10 +11143,10 @@ export default function App() {
         {user && currentView === 'ai-advisor' && (
           <div className="max-w-7xl mx-auto px-6 py-10">
             <div className="border-2 border-black bg-white p-6 md:p-8 shadow-[6px_6px_0px_0px_#000] mb-8">
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">// Direct AI Advisor Integrator</span>
-              <h2 className="text-3xl font-display font-black uppercase mt-1">Full-Page Educational Planner</h2>
+              
+              <h2 className="text-3xl font-display text-blue-600 font-black uppercase mt-1">DIRPA AI Advisor</h2>
               <p className="text-xs text-gray-500 mt-1">
-                Tell our AI educational consultant about your interests, your completed class, and what you wanna become in life. The system will leverage advanced AI models to synthesize clean, customized academic routes.
+                Tell our AI educational consultant about your interests, your completed class, and what you wanna become in life.
               </p>
             </div>
 
@@ -10830,12 +11295,12 @@ export default function App() {
               {/* Right Column Planner Output */}
               <div className="lg:col-span-7">
                 <div className="border-2 border-black p-6 md:p-8 bg-[#FDFBF7] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-h-[500px]">
-                  <span className="block text-xs font-mono font-black text-gray-500 uppercase tracking-widest mb-4">// DIRPA Interactive Counselor Feedback</span>
+                  <span className="block text-xs font-mono font-black text-gray-500 uppercase tracking-widest mb-4">DIRPA Feedback</span>
 
                   {isAiLoading && (
                     <div className="flex flex-col justify-center items-center h-[400px] text-center">
                       <div className="w-12 h-12 border-4 border-t-blue-600 border-black rounded-full animate-spin mb-4"></div>
-                      <p className="text-sm uppercase font-black tracking-widest font-mono">Querying AI Advisor models...</p>
+                      <p className="text-sm uppercase font-black tracking-widest font-mono">Please wait...</p>
                       <p className="text-xs text-gray-500 mt-2 max-w-sm">
                         Accessing academic node statistics database for standard certifications matching: {aiInputs.careerGoal || 'selected targets'}.
                       </p>
@@ -10873,7 +11338,7 @@ export default function App() {
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-blue-100 text-blue-900 border border-black">
-                                  Suggested Option #{index + 1}
+                                  Option #{index + 1}
                                 </span>
                                 <span className="text-[10px] font-mono font-bold text-stone-500">
                                   ⏱ {path.duration || '3-4 Years'} • 💰 {path.estimatedFees || 'Standard Tuition'}
@@ -11117,6 +11582,86 @@ export default function App() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* Submit Feedback Component */}
+              <div className="border-2 border-black p-6 bg-amber-50/60 dark:bg-zinc-850 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                <div className="flex items-center justify-between border-b border-black/15 dark:border-zinc-700 pb-3">
+                  <div>
+                    <span className="text-[10px] font-mono font-black text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 border border-amber-300 dark:border-amber-800 uppercase tracking-wide rounded">
+                      // SHARE YOUR EXPERIENCE
+                    </span>
+                    <h4 className="text-sm font-display font-black uppercase text-black dark:text-white mt-1">
+                      Submit Platform Review & Feedback
+                    </h4>
+                  </div>
+                  <MessageSquare className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                </div>
+
+                <p className="text-xs text-stone-600 dark:text-zinc-300 font-medium">
+                  Your feedback will be featured directly on DIRPA's homepage testimonial marquee for fellow students and alumni!
+                </p>
+
+                {profileFeedbackSuccess && (
+                  <div className="p-3 border-2 border-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 text-xs font-bold font-mono flex items-center gap-2">
+                    <span>✅</span>
+                    <span>Thank you! Your feedback has been published to the homepage marquee.</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmitProfileFeedback} className="space-y-4">
+                  {/* Rating Selector */}
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold uppercase text-stone-600 dark:text-zinc-400 mb-1.5">
+                      Overall Rating
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setProfileFeedbackRating(star)}
+                          className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                        >
+                          <Star
+                            className={`w-5 h-5 ${
+                              star <= profileFeedbackRating
+                                ? "fill-amber-400 text-amber-500"
+                                : "text-stone-300 dark:text-zinc-600"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="text-xs font-mono font-black text-amber-700 dark:text-amber-400 ml-2">
+                        {profileFeedbackRating}/5 Stars
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Feedback Textarea */}
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold uppercase text-stone-600 dark:text-zinc-400 mb-1.5">
+                      Your Review / Experience
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={profileFeedbackText}
+                      onChange={(e) => setProfileFeedbackText(e.target.value)}
+                      placeholder="Share how DIRPA helped you navigate intermediate streams, polytechnic routes, or graduation options..."
+                      className="w-full p-3 border-2 border-black bg-white dark:bg-zinc-900 text-black dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 font-medium placeholder:text-stone-400"
+                      required
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isSubmittingProfileFeedback || !profileFeedbackText.trim()}
+                    className="w-full py-2.5 bg-black dark:bg-zinc-100 text-white dark:text-black hover:bg-stone-800 dark:hover:bg-white text-xs font-mono font-black uppercase tracking-wider border-2 border-black transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>{isSubmittingProfileFeedback ? 'Publishing Review...' : 'Submit Feedback 🚀'}</span>
+                  </button>
+                </form>
               </div>
 
               {/* Status checklist metrics */}
@@ -11521,7 +12066,7 @@ export default function App() {
                       </div>
                     );
                   }
-                  const allComments = allDbFeedbacks.map(f => {
+                  const allComments = courseReviews.map(f => {
                     const matchedPath = getAllPossiblePathways().find(p => isCourseIdEquivalent(p.id, f.courseId));
                     return {
                       id: f.feedbackId || f.id,
@@ -12886,7 +13431,7 @@ export default function App() {
               </div>
 
               {(() => {
-                const realCourseFeedbacks = allDbFeedbacks.filter(f =>
+                const realCourseFeedbacks = courseReviews.filter(f =>
                   isCourseIdEquivalent(f.courseId, selectedCourseModal.id) ||
                   isCourseIdEquivalent(f.courseId, selectedCourseModal.code) ||
                   isCourseIdEquivalent(f.courseId, selectedCourseModal.name)
@@ -13141,7 +13686,7 @@ export default function App() {
               </div>
 
               {(() => {
-                const realJobFeedbacks = allDbFeedbacks.filter(f =>
+                const realJobFeedbacks = courseReviews.filter(f =>
                   isCourseIdEquivalent(f.courseId, selectedJobModal.id) ||
                   isCourseIdEquivalent(f.courseId, selectedJobModal.title)
                 );
@@ -13205,14 +13750,245 @@ export default function App() {
         </div>
       )}
 
+      {/* ================= DELAYED USER FEEDBACK PROMPT MODAL / TOAST ================= */}
+      <AnimatePresence>
+        {showDelayedFeedbackPrompt && user && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.92 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 right-4 sm:right-8 z-[120] max-w-md w-[calc(100vw-2rem)] bg-white dark:bg-zinc-900 border-2 border-black p-5 md:p-6 shadow-[8px_8px_0px_0px_#000] rounded-2xl relative text-black dark:text-white"
+          >
+            <button
+              type="button"
+              onClick={handleDismissPromptFeedback}
+              className="absolute top-3.5 right-3.5 p-1 text-stone-500 hover:text-black dark:hover:text-white hover:bg-stone-100 dark:hover:bg-zinc-800 rounded-lg transition-colors border border-transparent hover:border-black cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {promptFeedbackSuccess ? (
+              <div className="py-4 text-center space-y-2">
+                <div className="w-12 h-12 bg-emerald-100 border-2 border-black rounded-full flex items-center justify-center mx-auto text-2xl">
+                  🌟
+                </div>
+                <h4 className="text-base font-display font-black uppercase text-black dark:text-white">
+                  Thank You for Your Review!
+                </h4>
+                <p className="text-xs text-stone-600 dark:text-zinc-300 font-medium">
+                  Your feedback helps DIRPA empower thousands of students across their career roadmaps.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitPromptFeedback} className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 border-2 border-black flex items-center justify-center text-amber-900 font-black text-lg shrink-0">
+                    💬
+                  </div>
+                  <div className="pr-4">
+                    <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
+                      DIRPA User Review
+                    </span>
+                    <h3 className="text-sm md:text-base font-display font-black uppercase text-black dark:text-white leading-tight">
+                      How is your experience with DIRPA so far? Leave a review!
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Rating Stars */}
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-xs font-bold text-stone-600 dark:text-zinc-300 mr-2">Rating:</span>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      onClick={() => setUserPromptFeedbackRating(star)}
+                      className="p-1 hover:scale-125 transition-transform cursor-pointer"
+                    >
+                      <Star
+                        className={`w-5 h-5 ${
+                          star <= userPromptFeedbackRating
+                            ? "fill-amber-400 text-amber-500"
+                            : "text-stone-300 dark:text-zinc-700"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Text area */}
+                <div>
+                  <textarea
+                    rows={3}
+                    value={userPromptFeedbackComment}
+                    onChange={(e) => setUserPromptFeedbackComment(e.target.value)}
+                    placeholder="Tell us what you think or how DIRPA helped your career journey..."
+                    className="w-full p-3 text-xs font-sans border-2 border-black bg-stone-50 dark:bg-zinc-800 rounded-xl focus:outline-none focus:bg-white dark:focus:bg-zinc-900 text-black dark:text-white placeholder-stone-400"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDismissPromptFeedback}
+                    className="px-3.5 py-2 border border-stone-300 dark:border-zinc-700 hover:border-black text-[11px] font-bold uppercase text-stone-600 dark:text-zinc-300 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                  >
+                    Maybe Later
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPromptFeedback || !userPromptFeedbackComment.trim()}
+                    className="px-4 py-2 bg-black hover:bg-stone-800 text-yellow-300 font-display font-black text-xs uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:shadow-none active:translate-x-0.5 active:translate-y-0.5 rounded-lg transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                  >
+                    {isSubmittingPromptFeedback ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-yellow-300" />
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5 text-yellow-300" />
+                        <span>Submit Review</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= INFINITE SCROLLING TESTIMONIAL MARQUEE (Home Page Only) ================= */}
+      {((currentView === 'landing') || (currentView === 'dashboard' && !selectedPathway && searchMethod === 'none')) && (
+        <section id="testimonial-marquee-section" className="w-full bg-[#f8fafc] dark:bg-zinc-950 py-10 border-t-2 border-black overflow-hidden relative select-none mt-auto">
+          <div className="max-w-7xl mx-auto px-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <span className="text-[10px] font-mono font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest block">
+                // COMMUNITY FEEDBACK & REVIEWS
+              </span>
+              <h3 className="text-xl md:text-2xl font-display font-black uppercase text-black dark:text-white">
+                What DIRPA Users Say
+              </h3>
+            </div>
+            {platformReviews.length > 0 && (
+              <span className="text-xs font-mono font-bold text-stone-500 dark:text-zinc-400">
+                Hover to pause scroll ⏸️
+              </span>
+            )}
+          </div>
+
+          {/* Marquee Track Container */}
+          <div className="w-full overflow-hidden relative py-2">
+            {/* Subtle gradient edges for smooth fading */}
+            <div className="absolute left-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-r from-[#f8fafc] dark:from-zinc-950 to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-l from-[#f8fafc] dark:from-zinc-950 to-transparent z-10 pointer-events-none" />
+
+            {(() => {
+              const dbItems = platformReviews.map(f => ({
+                id: f.id || f.feedbackId,
+                name: f.name || 'DIRPA Student',
+                role: f.role || f.educationalStage || 'Student Reviewer',
+                feedbackText: f.feedbackText || f.comment || f.experience || 'Great platform for academic career navigation!',
+                avatar: f.avatar || '',
+                overallRating: f.overallRating || 5
+              }));
+
+              if (dbItems.length === 0) {
+                return (
+                  <div className="max-w-xl mx-auto my-4 p-6 border-2 border-dashed border-stone-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl text-center space-y-2">
+                    <Quote className="w-8 h-8 text-amber-500 mx-auto opacity-80" />
+                    <p className="text-sm font-bold text-black dark:text-white uppercase tracking-tight">
+                      No Community Feedbacks Yet
+                    </p>
+                    <p className="text-xs text-stone-500 dark:text-zinc-400">
+                      Be the first student or alumni mentor to share your review! Head to your Profile section to submit feedback.
+                    </p>
+                  </div>
+                );
+              }
+
+              let marqueeList = dbItems;
+              if (dbItems.length < 6) {
+                while (marqueeList.length < 12) {
+                  marqueeList = [...marqueeList, ...dbItems];
+                }
+              } else {
+                marqueeList = [...dbItems, ...dbItems];
+              }
+
+              return (
+                <div className="flex gap-6 animate-marquee hover:[animation-play-state:paused] py-2">
+                  {marqueeList.map((item, index) => (
+                    <div
+                      key={`${item.id}-${index}`}
+                      className="w-[300px] sm:w-[360px] shrink-0 bg-white dark:bg-zinc-900 rounded-xl border border-stone-200 dark:border-zinc-800 p-5 shadow-md hover:shadow-xl transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Card Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            {item.avatar && (item.avatar.startsWith('http') || item.avatar.startsWith('data:image/')) ? (
+                              <img
+                                src={item.avatar}
+                                alt={item.name}
+                                className="w-10 h-10 rounded-full border border-stone-200 dark:border-zinc-700 object-cover shrink-0"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-black text-sm flex items-center justify-center shrink-0">
+                                {item.name ? item.name.charAt(0).toUpperCase() : 'D'}
+                              </div>
+                            )}
+                            <div className="min-w-0 pr-2">
+                              <h4 className="font-bold text-sm text-black dark:text-white truncate">
+                                {item.name}
+                              </h4>
+                              <p className="text-[11px] text-stone-500 dark:text-zinc-400 font-medium truncate">
+                                {item.role}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Subtle grey quotation mark icon */}
+                          <Quote className="w-6 h-6 text-stone-300 dark:text-zinc-600 shrink-0 transform rotate-180" />
+                        </div>
+
+                        {/* Card Body */}
+                        <p className="text-xs md:text-sm text-stone-600 dark:text-zinc-300 font-sans leading-relaxed line-clamp-4">
+                          "{item.feedbackText}"
+                        </p>
+                      </div>
+
+                      {/* Rating footer */}
+                      <div className="flex items-center gap-1 mt-4 pt-3 border-t border-stone-100 dark:border-zinc-800">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3.5 h-3.5 ${
+                              i < (item.overallRating || 5)
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-stone-200 dark:text-zinc-700"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
+
       {/* ================= BOTTOM STATUS FOOTER ================= */}
       <footer id="bottom-footer" className="hidden md:flex h-12 border-t-2 border-black bg-white flex-row items-center justify-between px-12 text-[10px] font-medium tracking-widest text-gray-500 uppercase mt-auto select-none">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-          <span>DIRPA ECOSYSTEM STATUS: ACTIVE // AI CORE SYNC COMPLETE</span>
-        </div>
+        
         <div className="flex gap-6 italic items-center">
-          <span>STABLE VERSION 2.0.4 — BETA</span>
+          
           <div className="flex items-center gap-2 not-italic font-display font-black text-black">
             <DirpaLogo styleName={activeLogo} variant="icon" size="sm" />
             <span>© 2026 DIRPA GUIDANCE SERVICES</span>

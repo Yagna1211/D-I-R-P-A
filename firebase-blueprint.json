@@ -147,6 +147,29 @@
         "feedbackType",
         "feedbackText"
       ]
+    },
+    "PlatformReview": {
+      "title": "Platform Review",
+      "description": "General DIRPA platform testimonial or feedback submitted from profile or platform prompt.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "avatar": { "type": "string" },
+        "educationalStage": { "type": "string" },
+        "feedbackText": { "type": "string" },
+        "overallRating": { "type": "integer" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "name",
+        "feedbackText",
+        "overallRating"
+      ]
     }
   },
   "firestore": {
@@ -173,6 +196,10 @@
     "/feedbacks/{feedbackId}": {
       "schema": "Feedback",
       "description": "Alumni feedback on courses, colleges, pathways, and jobs."
+    },
+    "/platform_reviews/{reviewId}": {
+      "schema": "PlatformReview",
+      "description": "Platform-level user reviews displayed on the homepage marquee."
     },
     "/flowchart_feedbacks/{reportId}": {
       "schema": "FlowchartFeedback",
