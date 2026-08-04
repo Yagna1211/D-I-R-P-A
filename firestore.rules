@@ -141,5 +141,10 @@ service cloud.firestore {
         allow read, write: if isSignedIn();
       }
     }
+
+    // --- Illustrations Collection ---
+    match /illustrations/{illustrationId} {
+      allow read, write: if true;
+    }
   }
 }

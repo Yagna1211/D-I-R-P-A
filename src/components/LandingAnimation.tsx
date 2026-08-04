@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Compass, MapPin, ArrowRight, GraduationCap, Briefcase, Award, Target } from 'lucide-react';
 import DirpaLogo, { getActiveLogoStyle } from './DirpaLogo';
@@ -13,6 +13,11 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
 
   // Interactive path drawing trigger state
   const [drawPath, setDrawPath] = useState(false);
+
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     // Stage 1: Big DIRPA Entry. Set path to begin drawing after logo settles
@@ -32,7 +37,7 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
 
     // Stage 4: Fully finalize & unmount
     const timerDone = setTimeout(() => {
-      onComplete();
+      onCompleteRef.current();
     }, 5300);
 
     return () => {
@@ -41,7 +46,7 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
       clearTimeout(timerWipe);
       clearTimeout(timerDone);
     };
-  }, [onComplete]);
+  }, []);
 
   // Letters of DIRPA
   const brandLetters = ["D", "I", "R", "P", "A"];
@@ -59,14 +64,23 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
   const handleSkip = () => {
     setStage('curtain-wipe');
     setTimeout(() => {
-      onComplete();
-    }, 800);
+      onCompleteRef.current();
+    }, 600);
   };
 
   return (
     <AnimatePresence mode="wait">
       {stage !== 'done' && (
         <div id="landing-splash-overlay" className="fixed inset-0 z-50 overflow-hidden select-none bg-stone-100">
+          
+          {/* Skip Intro Button */}
+          <button
+            onClick={handleSkip}
+            className="absolute top-6 right-6 z-50 font-mono font-extrabold text-xs text-black uppercase tracking-widest bg-amber-300 hover:bg-amber-400 px-3.5 py-1.5 border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <span>Skip Intro</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
           
           {/* BACKGROUND DECORATIONS (Connecting paths, Dot-grid, Moving stars) */}
           <div 

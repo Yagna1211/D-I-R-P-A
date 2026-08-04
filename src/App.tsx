@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   GraduationCap,
   BookOpen,
@@ -55,10 +55,38 @@ import { AcademicPathway, AlumniInsight, ChatThread, Message, SavedPath, Timelin
 import { motion, AnimatePresence } from 'motion/react';
 import LandingAnimation from './components/LandingAnimation';
 import AlumniOnboardingWizard from './components/AlumniOnboardingWizard';
+import { OnetCareerExplorer } from './components/OnetCareerExplorer';
 import DirpaLogo, { getActiveLogoStyle, LogoStyle } from './components/DirpaLogo';
 import Markdown from 'react-markdown';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { CUSTOM_ILLUSTRATIONS, getIllustrationByIdOrUrl } from './data/illustrationsData';
+import { IllustrationSelector } from './components/IllustrationSelector';
+import { CameraCaptureModal } from './components/CameraCaptureModal';
+import { AvatarDisplay, resolveAvatarUrl } from './components/AvatarDisplay';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './components/LanguageSwitcher';
+import RegionSelector from './components/RegionSelector';
+export { resolveAvatarUrl };
+
+export const seedIllustrationsToFirestore = async () => {
+  try {
+    for (const ill of CUSTOM_ILLUSTRATIONS) {
+      const docRef = doc(db, 'illustrations', ill.id);
+      await setDoc(docRef, {
+        id: ill.id,
+        name: ill.name,
+        type: ill.type,
+        badge: ill.badge,
+        description: ill.description,
+        url: ill.url,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    }
+  } catch (err) {
+    console.error("Firestore illustrations seeding error:", err);
+  }
+};
 import { 
   DEGREE_SPECIALIZATION_MAP, 
   SpecializationCourse, 
@@ -66,7 +94,7 @@ import {
   getFallbackSpecializations 
 } from './data/specializations';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, deleteUser, verifyPasswordResetCode, confirmPasswordReset, checkActionCode, signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, onSnapshot, addDoc, orderBy } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, onSnapshot, addDoc, orderBy } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 
 export enum OperationType {
@@ -431,11 +459,24 @@ const safeLocalStorage = {
   }
 };
 
+const HERO_TITLES = [
+  "DON'T FOLLOW THE CROWD, FIND YOUR PATH",
+  "भीड़ का पीछा न करें, अपना रास्ता खोजें",
+  "గుంపును అనుసరించవద్దు, మీ మార్గాన్ని కనుగొనండి",
+  "கூட்டத்தைப் பின்தொடராதே, உனக்கான பாதையைக் கண்டறி"
+];
+
 export default function App() {
+  const { t } = useTranslation();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [showLandingAnimation, setShowLandingAnimation] = useState<boolean>(true);
   const [activeLogo, setActiveLogo] = useState<LogoStyle>(getActiveLogoStyle());
   const [showPost10thChoice, setShowPost10thChoice] = useState<boolean>(false);
+  const [heroTitleIndex, setHeroTitleIndex] = useState<number>(0);
+
+  const handleAnimationComplete = useCallback(() => {
+    setShowLandingAnimation(false);
+  }, []);
 
   useEffect(() => {
     const handleLogoUpdate = (e: Event) => {
@@ -452,6 +493,7 @@ export default function App() {
     document.documentElement.classList.remove('dark');
     safeLocalStorage.setItem('dirpa-theme', 'light');
     setIsDarkMode(false);
+    seedIllustrationsToFirestore();
   }, []);
 
   // Real Google Sign-in Auth session persistence
@@ -485,12 +527,13 @@ export default function App() {
               name: data.name || firebaseUser.displayName || 'Google User',
               email: userEmail,
               role: data.role || 'student',
-              avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '👨‍🎓',
+              avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '/illustrations/person1.png',
               interests: data.interests || [],
               strengths: data.strengths || [],
               careerGoal: data.careerGoal || '',
               bio: data.bio || '',
               onboarded: data.onboarded || false,
+              hasSubmittedPlatformFeedback: data.hasSubmittedPlatformFeedback || false,
               timeline: data.timeline || []
             };
             setUser(loggedInUser as any);
@@ -570,9 +613,18 @@ export default function App() {
 
   // Navigation & User views
   // 'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'roadmap' | 'insights' | 'role-selection'
-  const [currentView, setCurrentView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'role-selection' | 'alumni-onboarding' | 'reset-password'>('landing');
-  const [selectedNav, setSelectedNav] = useState<'home' | 'messages' | 'saved' | 'profile' | 'ai-advisor' | 'insights' | 'about'>('home');
-  const [previousView, setPreviousView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'about'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'role-selection' | 'alumni-onboarding' | 'reset-password' | 'onet-careers'>('landing');
+
+  useEffect(() => {
+    if (currentView === 'landing') {
+      const interval = setInterval(() => {
+        setHeroTitleIndex((prev) => (prev + 1) % HERO_TITLES.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [currentView]);
+  const [selectedNav, setSelectedNav] = useState<'home' | 'messages' | 'saved' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'onet-careers'>('home');
+  const [previousView, setPreviousView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'about' | 'onet-careers'>('landing');
 
   // User Authentication State
   const [user, setUser] = useState<{
@@ -585,6 +637,9 @@ export default function App() {
     strengths: string[];
     careerGoal: string;
     bio?: string;
+    onboarded?: boolean;
+    hasSubmittedPlatformFeedback?: boolean;
+    timeline?: any[];
   } | null>(null);
 
   const [authForm, setAuthForm] = useState({
@@ -592,7 +647,7 @@ export default function App() {
     email: '',
     password: '',
     role: 'student' as 'student' | 'alumni',
-    avatar: '👨‍🎓',
+    avatar: '/illustrations/person1.png',
     isGoogle: false,
     bio: ''
   });
@@ -610,13 +665,17 @@ export default function App() {
     name: '',
     email: '',
     bio: '',
-    avatar: '👨‍🎓'
+    avatar: '/illustrations/person1.png'
   });
 
   // Profile picture customization variables
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
+  const [showIllustrationsModal, setShowIllustrationsModal] = useState<boolean>(false);
+  const [showCameraModal, setShowCameraModal] = useState<boolean>(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const illustrationGridRef = React.useRef<HTMLDivElement>(null);
 
   // PDF Flowchart export states & references
   const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
@@ -631,16 +690,17 @@ export default function App() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const handleUpdateAvatarDirectly = (newAvatar: string) => {
+  const handleUpdateAvatarDirectly = async (newAvatar: string) => {
     if (!user) return;
     const updatedUser = {
       ...user,
       avatar: newAvatar
     };
     setUser(updatedUser);
+    setProfileEditForm(prev => ({ ...prev, avatar: newAvatar }));
 
     const updatedRecords = registeredUsers.map(u => {
-      if (u.id === user.id) {
+      if (u.id === user.id || (user.email && u.email && u.email.toLowerCase() === user.email.toLowerCase())) {
         return {
           ...u,
           avatar: newAvatar
@@ -651,11 +711,46 @@ export default function App() {
     setRegisteredUsers(updatedRecords);
     safeLocalStorage.setItem('dirpa_registered_users', JSON.stringify(updatedRecords));
 
-    // Update current comments authored by this user
+    // Save directly to Firestore for full persistence
+    try {
+      const userRef = doc(db, 'users', user.id);
+      await setDoc(userRef, {
+        avatar: newAvatar,
+        photoURL: newAvatar,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Firestore avatar update error:", err);
+    }
+
+    // 1. Update platformReviews in local state
+    setPlatformReviews(prev => prev.map(rev => {
+      const isAuthor = rev.userId === user.id || 
+                       (user.email && (rev.userEmail === user.email || rev.authorEmail === user.email || rev.email === user.email)) || 
+                       (user.name && rev.name && rev.name.toLowerCase() === user.name.toLowerCase());
+      return isAuthor ? { ...rev, avatar: newAvatar, photoURL: newAvatar } : rev;
+    }));
+
+    // 2. Update dbFeedbacks and courseReviews in local state
+    setDbFeedbacks(prev => prev.map(fb => {
+      const isAuthor = fb.userId === user.id || 
+                       (user.email && (fb.userEmail === user.email || fb.authorEmail === user.email || fb.email === user.email)) || 
+                       (user.name && fb.name && fb.name.toLowerCase() === user.name.toLowerCase());
+      return isAuthor ? { ...fb, avatar: newAvatar, authorAvatar: newAvatar } : fb;
+    }));
+
+    setCourseReviews(prev => prev.map(cr => {
+      const isAuthor = cr.userId === user.id || 
+                       (user.email && (cr.userEmail === user.email || cr.authorEmail === user.email || cr.email === user.email)) || 
+                       (user.name && cr.name && cr.name.toLowerCase() === user.name.toLowerCase());
+      return isAuthor ? { ...cr, avatar: newAvatar, authorAvatar: newAvatar } : cr;
+    }));
+
+    // 3. Update current comments authored by this user
     setDynamicPathways(prev => prev.map(p => ({
       ...p,
       alumniInsights: p.alumniInsights.map(ins => {
-        if (ins.authorEmail === user.email) {
+        if ((user.email && ins.authorEmail === user.email) || (ins as any).userId === user.id || (user.name && ins.name && ins.name.toLowerCase() === user.name.toLowerCase())) {
           return {
             ...ins,
             avatar: newAvatar
@@ -664,6 +759,52 @@ export default function App() {
         return ins;
       })
     })));
+
+    // 4. Update chat threads in local state
+    setChatThreads(prev => prev.map((t: any) => {
+      let updated = { ...t };
+      if (t.userId === user.id || (user.email && t.userEmail === user.email)) {
+        updated.userAvatar = newAvatar;
+      }
+      if (t.alumniId === user.id || (user.email && t.alumniEmail === user.email) || (user.name && t.alumniName && t.alumniName.toLowerCase() === user.name.toLowerCase())) {
+        updated.alumniAvatar = newAvatar;
+      }
+      return updated;
+    }));
+
+    // 5. Update documents in Firestore platform_reviews collection if user authored any
+    try {
+      const pCol = collection(db, 'platform_reviews');
+      const pSnap = await getDocs(pCol);
+      pSnap.forEach(async (dSnap) => {
+        const d = dSnap.data();
+        const isAuthor = d.userId === user.id || 
+                         (user.email && (d.userEmail === user.email || d.authorEmail === user.email || d.email === user.email)) || 
+                         (user.name && d.name && d.name.toLowerCase() === user.name.toLowerCase());
+        if (isAuthor) {
+          await updateDoc(doc(db, 'platform_reviews', dSnap.id), { avatar: newAvatar, photoURL: newAvatar });
+        }
+      });
+    } catch (e) {
+      console.error("Firestore platform_reviews avatar sync error:", e);
+    }
+
+    // 6. Update documents in Firestore feedbacks collection if user authored any
+    try {
+      const fCol = collection(db, 'feedbacks');
+      const fSnap = await getDocs(fCol);
+      fSnap.forEach(async (dSnap) => {
+        const d = dSnap.data();
+        const isAuthor = d.userId === user.id || 
+                         (user.email && (d.userEmail === user.email || d.authorEmail === user.email || d.email === user.email)) || 
+                         (user.name && d.name && d.name.toLowerCase() === user.name.toLowerCase());
+        if (isAuthor) {
+          await updateDoc(doc(db, 'feedbacks', dSnap.id), { avatar: newAvatar, authorAvatar: newAvatar });
+        }
+      });
+    } catch (e) {
+      console.error("Firestore feedbacks avatar sync error:", e);
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1218,18 +1359,123 @@ export default function App() {
   const [isSubmittingProfileFeedback, setIsSubmittingProfileFeedback] = useState<boolean>(false);
   const [profileFeedbackSuccess, setProfileFeedbackSuccess] = useState<boolean>(false);
 
-  // Delayed Feedback Prompt effect (triggers 35 seconds after user mounts/logs in if not already dismissed)
+  // Helper function to check if the user has already submitted a platform review (Database & Local)
+  const checkUserHasSubmittedFeedback = async (userId: string, userEmail?: string): Promise<boolean> => {
+    if (!userId) return false;
+
+    // 1. Check in-memory user state flag
+    if (user?.hasSubmittedPlatformFeedback) return true;
+
+    // 2. Check localStorage flag for immediate lookup
+    const localFlag = localStorage.getItem(`dirpa_has_submitted_feedback_${userId}`);
+    if (localFlag === 'true') return true;
+
+    // 3. Check loaded platformReviews array
+    const isAuthorInLocal = platformReviews.some(r => 
+      (r.userId && r.userId === userId) ||
+      (r.userEmail && userEmail && r.userEmail === userEmail) ||
+      (r.authorEmail && userEmail && r.authorEmail === userEmail) ||
+      (r.email && userEmail && r.email === userEmail)
+    );
+    if (isAuthorInLocal) return true;
+
+    // 4. Query platform_reviews collection in Firestore for user ID
+    try {
+      const pRef = collection(db, 'platform_reviews');
+      const qUser = query(pRef, where('userId', '==', userId));
+      const snapUser = await getDocs(pRef);
+      const userHasDoc = snapUser.docs.some(doc => {
+        const d = doc.data();
+        return d.userId === userId || (userEmail && (d.userEmail === userEmail || d.authorEmail === userEmail || d.email === userEmail));
+      });
+      if (userHasDoc) return true;
+
+      // 5. Query user document in Firestore 'users/{userId}' for hasSubmittedPlatformFeedback boolean
+      const uRef = doc(db, 'users', userId);
+      const uSnap = await getDoc(uRef);
+      if (uSnap.exists()) {
+        const uData = uSnap.data();
+        if (uData.hasSubmittedPlatformFeedback === true) {
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error("Error checking platform feedback submission status in Firestore:", err);
+    }
+
+    return false;
+  };
+
+  // Helper function to check Once-a-Day Limit in LocalStorage
+  const checkIsPromptedToday = (userId: string): boolean => {
+    const lastPromptStr = localStorage.getItem(`lastFeedbackPromptDate_${userId}`) || localStorage.getItem('lastFeedbackPromptDate');
+    if (!lastPromptStr) return false;
+
+    const lastPromptDate = new Date(lastPromptStr);
+    const now = new Date();
+
+    const isSameCalendarDay = lastPromptDate.toDateString() === now.toDateString();
+    const isWithin24Hours = (now.getTime() - lastPromptDate.getTime()) < 24 * 60 * 60 * 1000;
+
+    return isSameCalendarDay || isWithin24Hours;
+  };
+
+  // Delayed Feedback Prompt effect (Evaluates submission status & once-a-day limit)
   useEffect(() => {
-    if (!user) return;
-    const isDismissed = sessionStorage.getItem(`dirpa_feedback_dismissed_${user.id}`);
-    if (isDismissed) return;
+    if (!user) {
+      setShowDelayedFeedbackPrompt(false);
+      return;
+    }
 
-    const timer = setTimeout(() => {
-      setShowDelayedFeedbackPrompt(true);
-    }, 35000);
+    let isMounted = true;
+    let timerId: NodeJS.Timeout | null = null;
 
-    return () => clearTimeout(timer);
-  }, [user?.id]);
+    const evaluateAndSchedulePrompt = async () => {
+      // Rule 1: Check Submission Status (Database & Local)
+      const hasSubmitted = await checkUserHasSubmittedFeedback(user.id, user.email);
+      if (!isMounted) return;
+
+      if (hasSubmitted) {
+        // User has already submitted feedback -> NEVER show feedback prompt/reminder again
+        setUser(prev => (prev && !prev.hasSubmittedPlatformFeedback) ? { ...prev, hasSubmittedPlatformFeedback: true } : prev);
+        localStorage.setItem(`dirpa_has_submitted_feedback_${user.id}`, 'true');
+        setShowDelayedFeedbackPrompt(false);
+        return;
+      }
+
+      // Rule 2: Once-a-Day Limit (Local Storage)
+      if (checkIsPromptedToday(user.id)) {
+        // Prompt appeared already today / in the last 24h -> Do NOT render/show
+        setShowDelayedFeedbackPrompt(false);
+        return;
+      }
+
+      // Check session storage dismissal for current tab session
+      const isDismissedInSession = sessionStorage.getItem(`dirpa_feedback_dismissed_${user.id}`);
+      if (isDismissedInSession === 'true') {
+        setShowDelayedFeedbackPrompt(false);
+        return;
+      }
+
+      // Rule 3: Schedule prompt timer if eligible
+      timerId = setTimeout(() => {
+        if (!isMounted) return;
+        setShowDelayedFeedbackPrompt(true);
+
+        // Save timestamp string to localStorage immediately when prompt appears
+        const nowIso = new Date().toISOString();
+        localStorage.setItem('lastFeedbackPromptDate', nowIso);
+        localStorage.setItem(`lastFeedbackPromptDate_${user.id}`, nowIso);
+      }, 20000);
+    };
+
+    evaluateAndSchedulePrompt();
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [user?.id, user?.hasSubmittedPlatformFeedback, platformReviews]);
 
   const handleSubmitPromptFeedback = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1247,6 +1493,23 @@ export default function App() {
       type: 'platform',
       createdAt: new Date().toISOString()
     };
+
+    // Mark user as having submitted feedback in local state & localStorage
+    if (user?.id) {
+      setUser(prev => prev ? { ...prev, hasSubmittedPlatformFeedback: true } : prev);
+      localStorage.setItem(`dirpa_has_submitted_feedback_${user.id}`, 'true');
+      
+      // Update user document in Firestore 'users/{userId}'
+      try {
+        const uRef = doc(db, 'users', user.id);
+        await setDoc(uRef, {
+          hasSubmittedPlatformFeedback: true,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Error setting hasSubmittedPlatformFeedback on user doc:", e);
+      }
+    }
 
     try {
       const ref = await addDoc(collection(db, 'platform_reviews'), newPlatformDoc);
@@ -1280,7 +1543,10 @@ export default function App() {
 
   const handleDismissPromptFeedback = () => {
     setShowDelayedFeedbackPrompt(false);
+    const nowIso = new Date().toISOString();
+    localStorage.setItem('lastFeedbackPromptDate', nowIso);
     if (user) {
+      localStorage.setItem(`lastFeedbackPromptDate_${user.id}`, nowIso);
       sessionStorage.setItem(`dirpa_feedback_dismissed_${user.id}`, 'true');
     }
   };
@@ -1303,6 +1569,23 @@ export default function App() {
       type: 'platform',
       createdAt: new Date().toISOString()
     };
+
+    // Mark user as having submitted feedback in local state & localStorage
+    if (user?.id) {
+      setUser(prev => prev ? { ...prev, hasSubmittedPlatformFeedback: true } : prev);
+      localStorage.setItem(`dirpa_has_submitted_feedback_${user.id}`, 'true');
+      
+      // Update user document in Firestore 'users/{userId}'
+      try {
+        const uRef = doc(db, 'users', user.id);
+        await setDoc(uRef, {
+          hasSubmittedPlatformFeedback: true,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Error setting hasSubmittedPlatformFeedback on user doc:", e);
+      }
+    }
 
     try {
       const ref = await addDoc(collection(db, 'platform_reviews'), newPlatformDoc);
@@ -2731,7 +3014,7 @@ export default function App() {
           name: data.name || firebaseUser.displayName || 'Google User',
           email: firebaseUser.email,
           role: data.role || 'student',
-          avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '👨‍🎓',
+          avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '/illustrations/person1.png',
           interests: data.interests || [],
           strengths: data.strengths || [],
           careerGoal: data.careerGoal || '',
@@ -2767,7 +3050,7 @@ export default function App() {
               name: data.name || 'Google Sandbox User',
               email: userEmail,
               role: data.role || 'student',
-              avatar: data.avatar || '👨‍🎓',
+              avatar: data.avatar || '/illustrations/person1.png',
               interests: data.interests || [],
               strengths: data.strengths || [],
               careerGoal: data.careerGoal || '',
@@ -2782,7 +3065,7 @@ export default function App() {
               ...anonUser,
               displayName: 'Google Sandbox User',
               email: userEmail,
-              photoURL: '👨‍🎓'
+              photoURL: '/illustrations/person1.png'
             } as any);
             setCurrentView('role-selection');
           }
@@ -2824,7 +3107,7 @@ export default function App() {
         name: finalName,
         email: tempGoogleUser.email,
         role: chosenRole,
-        avatar: tempGoogleUser.photoURL || '👨‍🎓',
+        avatar: tempGoogleUser.photoURL || '/illustrations/person1.png',
         interests: defaultInterests,
         strengths: defaultStrengths,
         careerGoal: defaultGoal,
@@ -2834,7 +3117,7 @@ export default function App() {
       await setDoc(userRef, {
         ...newUserObj,
         uid: tempGoogleUser.uid,
-        photoURL: tempGoogleUser.photoURL || '👨‍🎓',
+        photoURL: tempGoogleUser.photoURL || '/illustrations/person1.png',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
@@ -3302,6 +3585,11 @@ export default function App() {
           return ins;
         })
       })));
+
+      // Trigger global avatar sync across all collections and views if avatar exists
+      if (profileEditForm.avatar) {
+        await handleUpdateAvatarDirectly(profileEditForm.avatar);
+      }
 
       setIsEditingProfile(false);
       alert("Profile updated successfully.");
@@ -6288,7 +6576,7 @@ export default function App() {
 
       <AnimatePresence>
         {showLandingAnimation && !initializingAuth && (
-          <LandingAnimation onComplete={() => setShowLandingAnimation(false)} />
+          <LandingAnimation onComplete={handleAnimationComplete} />
         )}
       </AnimatePresence>
 
@@ -6313,7 +6601,13 @@ export default function App() {
           <DirpaLogo styleName={activeLogo} variant="full" size="md" />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {currentView !== 'landing' && (
+            <>
+              <RegionSelector variant="header" isDarkMode={isDarkMode} />
+              <LanguageSwitcher variant="header" isDarkMode={isDarkMode} />
+            </>
+          )}
           {user ? (
             <div className="flex items-center gap-6 md:gap-10">
               <ul className="hidden md:flex gap-8 text-[11px] font-bold uppercase tracking-[0.2em]">
@@ -6325,7 +6619,7 @@ export default function App() {
                       : 'text-gray-500 hover:text-black opacity-60'
                   }`}
                 >
-                  Home
+                  {t('nav.home', 'Home')}
                 </li>
                 {user.role !== 'alumni' && (
                   <li 
@@ -6336,9 +6630,19 @@ export default function App() {
                         : 'text-gray-500 hover:text-black opacity-60'
                     }`}
                   >
-                    AI Advisor
+                    {t('nav.aiAdvisor', 'AI Advisor')}
                   </li>
                 )}
+                <li 
+                  onClick={() => { setSelectedNav('onet-careers'); setCurrentView('onet-careers'); }}
+                  className={`cursor-pointer pb-1 transition-all flex items-center gap-1 ${
+                    selectedNav === 'onet-careers' 
+                      ? 'text-black border-b-2 border-black opacity-100 font-extrabold' 
+                      : 'text-gray-500 hover:text-black opacity-60'
+                  }`}
+                >
+                  {t('nav.jobInfo', 'Job Info')}
+                </li>
                 <li 
                   onClick={handleOpenMessagesTab}
                   className={`cursor-pointer pb-1 transition-all flex items-center gap-1.5 ${
@@ -6347,7 +6651,7 @@ export default function App() {
                       : 'text-gray-500 hover:text-black opacity-60'
                   }`}
                 >
-                  Messages
+                  {t('nav.messages', 'Messages')}
                   {totalUnreadMessages > 0 && (
                     <span className="px-1.5 py-0.5 bg-red-600 text-white rounded-full text-[9px] font-black border border-black shadow-sm animate-pulse">
                       {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
@@ -6363,7 +6667,7 @@ export default function App() {
                         : 'text-gray-500 hover:text-black opacity-60'
                     }`}
                   >
-                    Saved Paths
+                    {t('nav.savedPaths', 'Saved Paths')}
                   </li>
                 )}
                 <li 
@@ -6374,7 +6678,7 @@ export default function App() {
                       : 'text-gray-500 hover:text-black opacity-60'
                   }`}
                 >
-                  Profile
+                  {t('nav.profile', 'Profile')}
                 </li>
                 <li 
                   onClick={() => { setSelectedNav('about'); setCurrentView('about'); }}
@@ -6384,25 +6688,22 @@ export default function App() {
                       : 'text-gray-500 hover:text-black opacity-60'
                   }`}
                 >
-                  About Us
+                  {t('nav.aboutUs', 'About Us')}
                 </li>
               </ul>
 
               <div className="flex items-center gap-3">
                 <div 
                   onClick={() => { setSelectedNav('profile'); setCurrentView('profile'); }}
-                  className="w-10 h-10 rounded-full bg-yellow-105 border-2 border-black overflow-hidden cursor-pointer hover:rotate-3 transition-transform"
+                  className="cursor-pointer hover:rotate-3 transition-transform"
+                  title={t('nav.profile', 'View Profile')}
                 >
-                  {(user.avatar.startsWith('http') || user.avatar.startsWith('data:image/')) ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs font-black uppercase bg-amber-100 text-amber-955">{user.avatar}</div>
-                  )}
+                  <AvatarDisplay avatar={user.avatar} name={user.name} className="w-10 h-10 rounded-full bg-yellow-105 border-2 border-black overflow-hidden flex items-center justify-center shrink-0" />
                 </div>
                 <button 
                   onClick={handleLogout}
                   className="p-2 border-2 border-black bg-white hover:bg-red-50 hover:text-red-600 transition-colors rounded-lg text-black"
-                  title="Sign Out"
+                  title={t('nav.signOut', 'Sign Out')}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -6412,13 +6713,14 @@ export default function App() {
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => { setAuthMode('signin'); setCurrentView('auth'); }}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity text-black"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity text-black border-2 border-black bg-amber-200 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
-                Sign In
+                {t('nav.signIn', 'Sign In')}
               </button>
             </div>
           )}
         </div>
+
       </nav>
       )}
 
@@ -6435,7 +6737,7 @@ export default function App() {
             }`}
           >
             <BookOpen className="w-5 h-5" />
-            Home
+            {t('nav.home', 'Home')}
           </button>
            {user.role !== 'alumni' && (
             <button 
@@ -6446,7 +6748,7 @@ export default function App() {
               }`}
             >
               <Sparkles className="w-5 h-5" />
-              AI Advisor
+              {t('nav.aiAdvisor', 'AI Advisor')}
             </button>
           )}
           <button 
@@ -6464,7 +6766,7 @@ export default function App() {
                 </span>
               )}
             </div>
-            Messages
+            {t('nav.messages', 'Messages')}
           </button>
           {user.role !== 'alumni' && (
             <button 
@@ -6475,7 +6777,7 @@ export default function App() {
               }`}
             >
               <Bookmark className="w-5 h-5" />
-              Saved
+              {t('nav.saved', 'Saved')}
             </button>
           )}
           <button 
@@ -6486,7 +6788,7 @@ export default function App() {
             }`}
           >
             <User className="w-5 h-5" />
-            Profile
+            {t('nav.profile', 'Profile')}
           </button>
           <button 
             type="button"
@@ -6648,12 +6950,13 @@ export default function App() {
         {currentView === 'landing' && (
           <div className="max-w-7xl mx-auto px-6 py-12 md:py-24 flex flex-col items-center text-center">
             
-            {/* Premium Stylized Heading (Artistic Flair) */}
+            {/* Premium Stylized Heading (Multilingual Looping Headline) */}
             <motion.h1 
               id="landing-hero-heading"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
+              key={heroTitleIndex}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
               style={{
                 fontStyle: 'normal',
                 textDecorationLine: 'none',
@@ -6664,7 +6967,7 @@ export default function App() {
               }}
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-black uppercase max-w-5xl mb-6 text-black dark:text-white leading-[1.05]"
             >
-              Don't follow the crowd, find your path
+              {HERO_TITLES[heroTitleIndex]}
             </motion.h1>
 
             <motion.p 
@@ -6673,8 +6976,7 @@ export default function App() {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="text-lg md:text-xl max-w-3xl leading-relaxed mb-10 text-stone-605 text-stone-600 dark:text-stone-300"
             >
-              DIRPA helps prospective 10th and 12th class students map engineering, medical, commercial and specialized diplomas. 
-              Review real roadmap nodes, query server-side AI advice, and chat directly with verified alumni.
+              {t('landing.heroSubtitle', "DIRPA helps prospective 10th and 12th class students map engineering, medical, commercial and specialized diplomas. Review real roadmap nodes, query server-side AI advice, and chat directly with verified alumni.")}
             </motion.p>
 
 
@@ -6685,7 +6987,7 @@ export default function App() {
                 onClick={() => { setAuthMode('signup'); setCurrentView('auth'); }}
                 className="px-6 py-3 border-2 border-black text-xs font-black uppercase tracking-widest transition-all bg-black hover:bg-stone-800 text-white shadow-[4px_4px_0px_0px_rgba(245,158,11,1)] hover:shadow-none active:translate-x-0.5 active:translate-y-0.5"
               >
-                Join DIRPA Network &rarr;
+                {t('landing.joinNetwork', "Join DIRPA Network →")}
               </button>
             </div>
 
@@ -6694,19 +6996,19 @@ export default function App() {
             <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
               <div className="border-2 border-black dark:border-zinc-700 p-6 bg-white dark:bg-zinc-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,110,0,0.15)]">
                 <p id="stat-active-students" className="text-4xl md:text-5xl font-display font-black text-rose-600 dark:text-rose-400 italic">{totalStudents}</p>
-                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">Active Students Assisted</p>
+                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">{t('landing.activeStudentsAssisted', 'Active Students Assisted')}</p>
               </div>
               <div className="border-2 border-black dark:border-zinc-700 p-6 bg-white dark:bg-zinc-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,110,0,0.15)]">
                 <p id="stat-verified-alumni" className="text-4xl md:text-5xl font-display font-black text-blue-600 dark:text-cyan-400 italic">{totalAlumniMentors}</p>
-                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">Verified Graduate Alumni</p>
+                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">{t('landing.verifiedGraduateAlumni', 'Verified Graduate Alumni')}</p>
               </div>
               <div className="border-2 border-black dark:border-zinc-700 p-6 bg-white dark:bg-zinc-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,110,0,0.15)]">
                 <p id="stat-contributed-insights" className="text-4xl md:text-5xl font-display font-black text-amber-500 dark:text-amber-400 italic">{totalContributedInsights}</p>
-                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">Contributed Insights / Paths</p>
+                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">{t('landing.contributedInsights', 'Contributed Insights / Paths')}</p>
               </div>
               <div className="border-2 border-black dark:border-zinc-700 p-6 bg-white dark:bg-zinc-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,110,0,0.15)]">
                 <p id="stat-success-rate" className="text-4xl md:text-5xl font-display font-black text-emerald-600 dark:text-emerald-400 italic">100%</p>
-                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">Counseling Success Rate</p>
+                <p className="text-xs uppercase font-bold tracking-widest text-gray-500 dark:text-zinc-400 mt-2">{t('landing.counselingSuccessRate', 'Counseling Success Rate')}</p>
               </div>
             </div>
 
@@ -6716,22 +7018,22 @@ export default function App() {
                 <div className="w-12 h-12 rounded-xl bg-violet-100 border-2 border-black flex items-center justify-center mb-4">
                   <Sliders className="w-6 h-6 text-violet-600" />
                 </div>
-                <h3 className="text-xl font-bold uppercase mb-2">Interactive Node Mapping</h3>
-                <p className="text-gray-600 text-sm">Visualize your life decisions via custom node trees with prerequisites, required subjects, examinations, and fee benchmarks.</p>
+                <h3 className="text-xl font-bold uppercase mb-2">{t('landing.interactiveMappingTitle', 'Interactive Node Mapping')}</h3>
+                <p className="text-gray-600 text-sm">{t('landing.interactiveMappingDesc', 'Visualize your life decisions via custom node trees with prerequisites, required subjects, examinations, and fee benchmarks.')}</p>
               </div>
               <div>
                 <div className="w-12 h-12 rounded-xl bg-orange-100 border-2 border-black flex items-center justify-center mb-4">
                   <User className="w-6 h-6 text-orange-600" />
                 </div>
-                <h3 className="text-xl font-bold uppercase mb-2">Authentic Alumni Insights</h3>
-                <p className="text-gray-600 text-sm">No random brochure descriptions. Read genuine lessons from engineers, doctors, designers, and accountants who cleared these exact paths.</p>
+                <h3 className="text-xl font-bold uppercase mb-2">{t('landing.alumniInsightsTitle', 'Authentic Alumni Insights')}</h3>
+                <p className="text-gray-600 text-sm">{t('landing.alumniInsightsDesc', 'No random brochure descriptions. Read genuine lessons from engineers, doctors, designers, and accountants who cleared these exact paths.')}</p>
               </div>
               <div>
                 <div className="w-12 h-12 rounded-xl bg-sky-100 border-2 border-black flex items-center justify-center mb-4">
                   <Sparkles className="w-6 h-6 text-sky-600" />
                 </div>
-                <h3 className="text-xl font-bold uppercase mb-2">Dual Human + AI Counsel</h3>
-                <p className="text-gray-600 text-sm">Leverage modern AI models to customize roadmap structures alongside real peer chat and advice networks.</p>
+                <h3 className="text-xl font-bold uppercase mb-2">{t('landing.dualCounselTitle', 'Dual Human + AI Counsel')}</h3>
+                <p className="text-gray-600 text-sm">{t('landing.dualCounselDesc', 'Leverage modern AI models to customize roadmap structures alongside real peer chat and advice networks.')}</p>
               </div>
             </div>
 
@@ -7347,14 +7649,14 @@ export default function App() {
                 <div className="absolute top-0 right-0 p-4">
           
                 </div>
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">DIRPA Personal Guidance</p>
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">{t('home.guidanceBadge', 'DIRPA Personal Guidance')}</p>
                 <h2 className="text-4xl md:text-5xl font-light font-serif italic not-italic leading-[1.1] mb-2 text-[#1A1A1A]">
-                  Welcome, <span className="font-sans font-black not-italic text-black">{user.name}</span>.
+                  {t('home.welcome', 'Welcome,')} <span className="font-sans font-black not-italic text-black">{user.name}</span>.
                 </h2>
                 <p className="text-sm text-gray-500 max-w-xl">
                   {user.role === 'student' 
-                    ? 'Explore real roadmaps matched to completed academic levels, submit preferences for dynamic AI recommendations, or chat with verified mentors.'
-                    : 'Help steer the future of young students by sharing your institutional milestones or writing pathway guidance insights.'
+                    ? t('home.studentWelcomeSubtitle', 'Explore real roadmaps matched to completed academic levels, submit preferences for dynamic AI recommendations, or chat with verified mentors.')
+                    : t('home.alumniWelcomeSubtitle', 'Help steer the future of young students by sharing your institutional milestones or writing pathway guidance insights.')
                   }
                 </p>
 
@@ -7366,7 +7668,7 @@ export default function App() {
                       onClick={() => setAiModalOpen(true)}
                       className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-tight flex items-center ml-2"
                     >
-                      <Sparkles className="w-3 h-3 mr-1 animate-pulse" /> Customize
+                      <Sparkles className="w-3 h-3 mr-1 animate-pulse" /> {t('home.customize', 'Customize')}
                     </button>
                   </div>
                 )}
@@ -7637,7 +7939,7 @@ export default function App() {
                                   <div key={`${ins.id || ""}_${idx}`} className="border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 space-y-1.5 text-xs">
                                     <div className="flex justify-between items-center text-[10px]">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-lg">{ins.avatar || '🎓'}</span>
+                                        <AvatarDisplay avatar={ins.avatar} name={ins.name} className="w-6 h-6 rounded-full border border-black overflow-hidden inline-block shrink-0" />
                                         <div>
                                           <span className="font-bold block text-stone-900 dark:text-white">{ins.name}</span>
                                           <span className="text-[8px] text-stone-400 dark:text-zinc-450 uppercase tracking-widest">{ins.role || 'Verified Expert'}</span>
@@ -7721,9 +8023,9 @@ export default function App() {
                   {searchMethod === 'none' && (
                     <div className="border-2 border-black p-6 bg-slate-50/50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left">
                       <div className="mb-4">
-                        <span className="text-[10px] font-mono font-black text-blue-700 bg-blue-100 px-2 py-0.5 border border-blue-200 uppercase tracking-widest">// NAVIGATION STRATEGY SELECTION</span>
-                        <h3 className="text-2xl font-display font-black uppercase mt-1">Explore Career Pathways Your Way</h3>
-                        <p className="text-xs text-stone-500 mt-1">Choose how you want to discover educational routes and custom timelines.</p>
+                        <span className="text-[10px] font-mono font-black text-blue-700 bg-blue-100 px-2 py-0.5 border border-blue-200 uppercase tracking-widest">{t('home.strategyTag', '// NAVIGATION STRATEGY SELECTION')}</span>
+                        <h3 className="text-2xl font-display font-black uppercase mt-1">{t('home.exploreHeader', 'Explore Career Pathways Your Way')}</h3>
+                        <p className="text-xs text-stone-500 mt-1">{t('home.exploreSubtitle', 'Choose how you want to discover educational routes and custom timelines.')}</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -7738,14 +8040,14 @@ export default function App() {
                               <span className="text-[10px] font-mono font-black tracking-widest text-[#CB5A07] bg-amber-50 border border-amber-200 px-2 py-0.5">DIMENSION 01</span>
                               <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🔍</span>
                             </div>
-                            <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">Search by Job Name?</h4>
+                            <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">{t('home.searchByJobTitle', 'Search by Job Name?')}</h4>
                             <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
-                              Type in your dream role, e.g., Software Engineer, Doctor, or Chartered Accountant to map backwards and find the qualifying courses and progression flowcharts.
+                              {t('home.searchByJobDesc', 'Type in your dream role, e.g., Software Engineer, Doctor, or Chartered Accountant to map backwards and find the qualifying courses and progression flowcharts.')}
                             </p>
                           </div>
                           
                           <div className="mt-6 text-[10px] font-black uppercase text-blue-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-dashed border-stone-150 pt-3">
-                            <span>Search Jobs & View Plans ➔</span>
+                            <span>{t('home.searchByJobBtn', 'Search Jobs & View Plans ➔')}</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </div>
                         </div>
@@ -7761,14 +8063,14 @@ export default function App() {
                               <span className="text-[10px] font-mono font-black tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-250 px-2 py-0.5">DIMENSION 02</span>
                               <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🎓</span>
                             </div>
-                            <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">Search by Class?</h4>
+                            <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">{t('home.searchByClassTitle', 'Search by Class?')}</h4>
                             <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
-                              Select pathways based on classes. Simply pick whether you completed Class 10th or Class 12th to explore educational maps.
+                              {t('home.searchByClassDesc', 'Select pathways based on classes. Simply pick whether you completed Class 10th or Class 12th to explore educational maps.')}
                             </p>
                           </div>
 
                           <div className="mt-6 text-[10px] font-black uppercase text-emerald-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-dashed border-stone-150 pt-3">
-                            <span>Choose Grade Standard ➔</span>
+                            <span>{t('home.searchByClassBtn', 'Choose Grade Standard ➔')}</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </div>
                         </div>
@@ -7784,14 +8086,14 @@ export default function App() {
                           onClick={() => { setSearchMethod('none'); setActiveLevel(null); setSelectedPathway(null); }}
                           className="px-3.5 py-2 border-2 border-black text-xs font-black uppercase bg-white hover:bg-stone-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none flex items-center gap-1 cursor-pointer"
                         >
-                          ← Back to Search Options
+                          {t('home.backToSearchOptions', '← Back to Search Options')}
                         </button>
                         <span className="text-[10px] font-mono font-black text-[#854D0E] uppercase bg-yellow-105 border border-yellow-250 px-2 py-1 rounded tracking-wide">// Standard Selection Filter</span>
                       </div>
 
                       <div>
-                        <h3 className="text-2xl font-display font-black uppercase">Which class have you completed?</h3>
-                        <p className="text-xs text-stone-500 mt-0.5">Submit your academic standard to render the corresponding roadmap diagram.</p>
+                        <h3 className="text-2xl font-display font-black uppercase">{t('home.classSelectionTitle', 'Which class have you completed?')}</h3>
+                        <p className="text-xs text-stone-500 mt-0.5">{t('home.classSelectionSubtitle', 'Submit your academic standard to render the corresponding roadmap diagram.')}</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
@@ -7801,11 +8103,11 @@ export default function App() {
                           className={`border-2 border-black p-6 bg-white transition-all cursor-pointer relative group shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none ${activeLevel === '10th' ? 'bg-amber-100 border-dashed ring-2 ring-black shadow-none translate-x-0.5 translate-y-0.5' : 'hover:bg-slate-50'}`}
                         >
                           <span className="absolute top-4 right-4 text-3xl opacity-15 font-serif italic font-bold">01</span>
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-amber-600">School Level standard</p>
-                          <h3 className="text-xl font-display font-black mt-1 uppercase">Completed 10th</h3>
-                          <p className="text-xs text-gray-500 mt-2 font-semibold">Explore Intermediate groups Science (MPC/BiPC), Commerce (MEC/CEC), Polytechnique, and ITI Trades.</p>
+                          <p className="text-[10px] uppercase tracking-widest font-bold text-amber-600">{t('home.schoolLevel', 'School Level standard')}</p>
+                          <h3 className="text-xl font-display font-black mt-1 uppercase">{t('home.completed10thTitle', 'Completed 10th')}</h3>
+                          <p className="text-xs text-gray-500 mt-2 font-semibold">{t('home.completed10thDesc', 'Explore Intermediate groups Science (MPC/BiPC), Commerce (MEC/CEC), Polytechnique, and ITI Trades.')}</p>
                           <div className="mt-4 text-[10px] font-black uppercase text-blue-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-stone-100 pt-3">
-                            <span>{activeLevel === '10th' ? '● Map Active' : 'View Node Map'}</span>
+                            <span>{activeLevel === '10th' ? t('home.mapActive', '● Map Active') : t('home.viewNodeMap', 'View Node Map')}</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </div>
                         </div>
@@ -7816,11 +8118,11 @@ export default function App() {
                           className={`border-2 border-black p-6 bg-white transition-all cursor-pointer relative group shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none ${activeLevel === '12th' ? 'bg-indigo-50 border-dashed ring-2 ring-black shadow-none translate-x-0.5 translate-y-0.5' : 'hover:bg-slate-50'}`}
                         >
                           <span className="absolute top-4 right-4 text-3xl opacity-15 font-serif italic font-bold">02</span>
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-600">College Level standard</p>
-                          <h3 className="text-xl font-display font-black mt-1 uppercase">Completed 12th</h3>
-                          <p className="text-xs text-gray-500 mt-2 font-semibold">Explore Engineering CSE/Mech/ECE, Medical MBBS/Dentistry, business BBA, CA auditing compliance, and law.</p>
+                          <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-600">{t('home.collegeLevel', 'College Level standard')}</p>
+                          <h3 className="text-xl font-display font-black mt-1 uppercase">{t('home.completed12thTitle', 'Completed 12th')}</h3>
+                          <p className="text-xs text-gray-500 mt-2 font-semibold">{t('home.completed12thDesc', 'Explore Engineering CSE/Mech/ECE, Medical MBBS/Dentistry, business BBA, CA auditing compliance, and law.')}</p>
                           <div className="mt-4 text-[10px] font-black uppercase text-blue-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-stone-100 pt-3">
-                            <span>{activeLevel === '12th' ? '● Map Active' : 'View Node Map'}</span>
+                            <span>{activeLevel === '12th' ? t('home.mapActive', '● Map Active') : t('home.viewNodeMap', 'View Node Map')}</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </div>
                         </div>
@@ -7836,14 +8138,14 @@ export default function App() {
                           onClick={() => { setSearchMethod('none'); setJobQuery(''); }}
                           className="px-3.5 py-2 border-2 border-black text-xs font-black uppercase bg-white hover:bg-stone-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none flex items-center gap-1 cursor-pointer"
                         >
-                          ← Back to Search Options
+                          {t('home.backToSearchOptions', '← Back to Search Options')}
                         </button>
                         <span className="text-[10px] font-mono font-black text-blue-700 uppercase bg-blue-100 px-3 py-1 border border-blue-200 rounded tracking-wider">// Job Reverse Mapping Engine</span>
                       </div>
 
                       <div>
-                        <h3 className="text-3xl font-display font-black uppercase text-stone-900">🔍 Career Pathway Reverse-Search</h3>
-                        <p className="text-xs text-stone-500 mt-1">Search for a job role or skill, and trace backwards to view its matching educational standard pathways and interactive progression flowchart.</p>
+                        <h3 className="text-3xl font-display font-black uppercase text-stone-900">{t('home.reverseSearchTitle', '🔍 Career Pathway Reverse-Search')}</h3>
+                        <p className="text-xs text-stone-500 mt-1">{t('home.reverseSearchSubtitle', 'Search for a job role or skill, and trace backwards to view its matching educational standard pathways and interactive progression flowchart.')}</p>
                       </div>
 
                       {/* Search Input and Badges */}
@@ -7854,7 +8156,7 @@ export default function App() {
                             type="text"
                             value={jobQuery}
                             onChange={(e) => setJobQuery(e.target.value)}
-                            placeholder="Type any career or job role (e.g., Software, Doctor, Architect, Accountant, Pilot, CA, Nurse, Advocate)..."
+                            placeholder={t('home.searchPlaceholder', "Type any career or job role (e.g., Software, Doctor, Architect, Accountant, Pilot, CA, Nurse, Advocate)...")}
                             className="w-full border-2 border-black p-3.5 pl-4 pr-32 text-sm font-bold placeholder-stone-450 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-zinc-50 text-black text-left"
                             id="job-search-input"
                           />
@@ -7870,7 +8172,7 @@ export default function App() {
                                 onClick={() => setJobQuery('')}
                                 className="text-xs text-stone-755 font-bold hover:bg-stone-200 cursor-pointer bg-stone-100 border border-black px-2 py-0.5 transition-colors"
                               >
-                                Clear
+                                {t('home.clear', 'Clear')}
                               </button>
                             )}
                           </div>
@@ -7878,7 +8180,7 @@ export default function App() {
 
                         {/* Popular Role Recommendations */}
                         <div className="pt-1">
-                          <span className="text-[9px] font-mono font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">// Popular searches (Click to fill):</span>
+                          <span className="text-[9px] font-mono font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">{t('home.popularSearches', '// Popular searches (Click to fill):')}</span>
                           <div className="flex flex-wrap gap-1.5">
                             {["Software Engineer", "Doctor", "Chartered Accountant", "Lieutenant (Army)", "Architect", "Nurse", "Advocate", "Data Scientist", "Pilot"].map(s => (
                               <button 
@@ -7899,7 +8201,7 @@ export default function App() {
                           <div className="border-2 border-black bg-stone-50 p-10 text-center space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-pulse">
                             <div className="flex justify-center items-center gap-2.5">
                               <RefreshCw className="w-5 h-5 animate-spin text-blue-700" />
-                              <span className="font-display font-black text-base uppercase tracking-tight text-black">DIRPA Calculating Pathway Matrix...</span>
+                              <span className="font-display font-black text-base uppercase tracking-tight text-black">{t('home.calculatingMatrix', 'DIRPA Calculating Pathway Matrix...')}</span>
                             </div>
                             <p className="text-[11px] text-stone-500 font-mono font-bold max-w-md mx-auto">// Re-indexing stream nodes, lateral entry parameters, and student eligibility factors</p>
                             <div className="space-y-2 max-w-sm mx-auto pt-3">
@@ -7911,7 +8213,7 @@ export default function App() {
                         ) : getEligibleRoutesForJob(jobQuery).length === 0 ? (
                           <div className="border-2 border-dashed border-stone-305 bg-white p-12 text-center text-stone-500">
                             <p className="text-sm font-black uppercase tracking-wider text-stone-750">
-                              {jobQuery ? "No matching career pathways found." : "Waiting for Career Input"}
+                              {jobQuery ? t('home.noPathwaysFound', 'No matching career pathways found.') : t('home.waitingInput', 'Waiting for Career Input')}
                             </p>
                             <p className="text-xs text-stone-400 mt-1">
                               {jobQuery 
@@ -8633,14 +8935,14 @@ export default function App() {
                         onClick={() => setIsComparing(false)}
                         className="px-4 py-2 border-2 border-black bg-black text-white hover:bg-white hover:text-black font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_0px_rgba(255,255,255,1)] hover:shadow-none transition-all flex items-center gap-1.5 cursor-pointer"
                       >
-                        ← Back to Home Page
+                        {t('compare.backToHome', '← Back to Home Page')}
                       </button>
                       <div>
                         <span className="text-[10px] uppercase font-black tracking-widest bg-black/30 text-yellow-300 px-2 py-0.5 rounded-sm">
-                          Curriculum Advisor Panel
+                          {t('compare.panelTitle', 'Curriculum Advisor Panel')}
                         </span>
                         <h2 className="text-3xl font-display font-black uppercase mt-1">
-                          ⚖️ Side-by-Side Advisor Board
+                          {t('compare.boardTitle', '⚖️ Side-by-Side Advisor Board')}
                         </h2>
                       </div>
                     </div>
@@ -8656,7 +8958,7 @@ export default function App() {
                         title="Swap active paths"
                         disabled={!comparePathAId && !comparePathBId}
                       >
-                        <ArrowLeftRight className="w-3 h-3" /> Swap
+                        <ArrowLeftRight className="w-3 h-3" /> {t('compare.swap', 'Swap')}
                       </button>
                       <button 
                         onClick={() => {
@@ -8666,7 +8968,7 @@ export default function App() {
                         }}
                         className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-black border-2 border-black font-black text-xs uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
                       >
-                        Reset both
+                        {t('compare.resetBoth', 'Reset both')}
                       </button>
                       <button 
                         onClick={() => setIsComparing(false)}
@@ -9375,16 +9677,16 @@ export default function App() {
                       <div className="flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         <span className="text-xs font-display font-black uppercase tracking-wider text-black dark:text-white">
-                          Engagement Statistics Overview
+                          {t('telemetry.header', 'Engagement Statistics Overview')}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono font-bold text-stone-500 uppercase">DIRPA Ecosystem Telemetry</span>
+                      <span className="text-[10px] font-mono font-bold text-stone-500 uppercase">{t('telemetry.badge', 'DIRPA Ecosystem Telemetry')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-200 dark:divide-zinc-800">
                       <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
                         <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
-                          Active Students
+                          {t('telemetry.activeStudents', 'Active Students')}
                         </span>
                         <span id="stat-active-students-banner" className="text-2xl md:text-3xl font-display font-black text-black dark:text-white">
                           {totalStudents}
@@ -9393,7 +9695,7 @@ export default function App() {
 
                       <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
                         <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
-                          Verified Alumni Mentors
+                          {t('telemetry.verifiedAlumni', 'Verified Alumni Mentors')}
                         </span>
                         <span id="stat-verified-alumni-banner" className="text-2xl md:text-3xl font-display font-black text-emerald-600 dark:text-emerald-400">
                           {totalAlumniMentors}
@@ -9402,7 +9704,7 @@ export default function App() {
 
                       <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
                         <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
-                          Contributed Insights
+                          {t('telemetry.contributedInsights', 'Contributed Insights')}
                         </span>
                         <span id="stat-insights-banner" className="text-2xl md:text-3xl font-display font-black text-purple-600 dark:text-purple-400">
                           {totalContributedInsights}
@@ -9411,7 +9713,7 @@ export default function App() {
 
                       <div className="pt-2 sm:pt-0 sm:px-4 text-center sm:text-left flex flex-col justify-center">
                         <span className="text-[10px] uppercase font-black tracking-wider text-stone-500 block mb-1">
-                          Mentorship Messages
+                          {t('telemetry.mentorshipMessages', 'Mentorship Messages')}
                         </span>
                         <span id="stat-messages-banner" className="text-2xl md:text-3xl font-display font-black text-blue-600 dark:text-blue-400">
                           {chatThreads.reduce((sum, t) => sum + (t.messages || []).length, 0)}
@@ -9435,7 +9737,7 @@ export default function App() {
                 <div className="p-4 bg-orange-500 text-white border-b-2 border-black flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <GitCompare className="w-5 h-5 text-white" />
-                    <span className="text-xs tracking-wider uppercase font-black font-display text-white">Compare Paths Tool</span>
+                    <span className="text-xs tracking-wider uppercase font-black font-display text-white">{t('compare.toolTitle', 'Compare Paths Tool')}</span>
                   </div>
                 </div>
 
@@ -9448,11 +9750,11 @@ export default function App() {
                     }}
                     className="w-full py-3.5 px-4 border-2 border-black bg-orange-500 hover:bg-black hover:text-white dark:bg-orange-600 dark:hover:bg-white dark:hover:text-black text-white font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none translate-y-0 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 cursor-pointer duration-150"
                   >
-                    <GitCompare className="w-4 h-4 animate-pulse" /> Compare Pathways
+                    <GitCompare className="w-4 h-4 animate-pulse" /> {t('compare.compareBtn', 'Compare Pathways')}
                   </button>
 
                   <p className="text-xs text-stone-500 dark:text-zinc-400 leading-normal">
-                    Evaluate and analyze subjects, tuition offsets, semester modules, and graduation placements side-by-side.
+                    {t('compare.toolDesc', 'Evaluate and analyze subjects, tuition offsets, semester modules, and graduation placements side-by-side.')}
                   </p>
                 </div>
               </div>
@@ -9902,9 +10204,11 @@ export default function App() {
                                     >
                                       <div className="flex justify-between items-center gap-2">
                                         <div className="flex items-center gap-2">
-                                          <div className="w-7 h-7 rounded-full bg-indigo-50 border border-black flex items-center justify-center text-xs text-black">
-                                            {alumni.avatar || '🎓'}
-                                          </div>
+                                          {(() => {
+                                            const isAuthor = user && (user.id === alumni.userId || user.email === alumni.userId || user.email === alumni.authorEmail || user.email === alumni.userEmail || (user.name && alumni.name && alumni.name.toLowerCase() === user.name.toLowerCase()));
+                                            const avatarVal = isAuthor && user?.avatar ? user.avatar : alumni.avatar;
+                                            return <AvatarDisplay avatar={avatarVal} name={alumni.name || 'Alumni'} className="w-7 h-7 rounded-full bg-indigo-50 border border-black flex items-center justify-center shrink-0" />;
+                                          })()}
                                           <div>
                                             <span className="font-extrabold text-stone-900 block text-[11px] leading-none mb-0.5 group-hover:text-blue-700 transition-colors">
                                               {alumni.name || 'Verified Alumni'}
@@ -10541,9 +10845,7 @@ export default function App() {
                                       </div>
 
                                       <div className="flex items-center gap-3 mb-3 text-black">
-                                        <div className="w-9 h-9 rounded-full bg-slate-100 border border-black flex items-center justify-center text-lg shadow">
-                                          {alumni.avatar || '🎓'}
-                                        </div>
+                                        <AvatarDisplay avatar={isAuthor && user?.avatar ? user.avatar : alumni.avatar} name={alumni.name || "Alumni"} className="w-9 h-9 rounded-full bg-slate-100 border border-black flex items-center justify-center shrink-0" />
                                         <div>
                                           <h5 className="text-xs font-black uppercase group-hover:text-blue-600 text-black leading-tight">{alumni.name || 'Verified Alumni'}</h5>
                                           <span className="text-[9px] text-gray-500 font-mono block leading-none">{alumni.institutionName} • Completed {alumni.completionYear}</span>
@@ -10825,13 +11127,7 @@ export default function App() {
                       .map(a => (
                         <div key={a.id} className="border-2 border-black bg-white p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-[3px_3px_0px_0px_#000] w-full">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-black flex items-center justify-center text-lg">
-                              {a.avatar.startsWith('http') ? (
-                                <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
-                              ) : (
-                                a.avatar
-                              )}
-                            </div>
+                            <AvatarDisplay avatar={a.avatar} name={a.name} className="w-10 h-10 rounded-full bg-slate-100 border border-black flex items-center justify-center shrink-0" />
                             <div>
                               <h4 className="text-xs font-black uppercase leading-tight">{a.name}</h4>
                               <p className="text-[10px] text-gray-500">{a.role}</p>
@@ -10898,13 +11194,7 @@ export default function App() {
                       }}
                       className={`p-4 cursor-pointer transition-colors flex items-center gap-3 relative group ${isActive ? 'bg-amber-100' : 'hover:bg-amber-50'} ${hasUnread ? 'font-bold' : ''}`}
                     >
-                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-black flex items-center justify-center text-lg overflow-hidden shrink-0">
-                        {thread.alumniAvatar.startsWith('http') ? (
-                          <img src={thread.alumniAvatar} alt={thread.alumniName} className="w-full h-full object-cover" />
-                        ) : (
-                          thread.alumniAvatar
-                        )}
-                      </div>
+                      <AvatarDisplay avatar={thread.alumniAvatar} name={thread.alumniName} className="w-9 h-9 rounded-full bg-slate-100 border border-black flex items-center justify-center shrink-0" />
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-0.5">
@@ -10987,13 +11277,7 @@ export default function App() {
                             className="flex items-center gap-2.5 cursor-pointer hover:opacity-85 group"
                             title="View full 100% timeline profile"
                           >
-                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-black flex items-center justify-center text-lg shrink-0 group-hover:rotate-6 transition-transform">
-                              {activeThread.alumniAvatar.startsWith('http') ? (
-                                <img src={activeThread.alumniAvatar} alt={activeThread.alumniName} className="w-full h-full object-cover" />
-                              ) : (
-                                activeThread.alumniAvatar
-                              )}
-                            </div>
+                            <AvatarDisplay avatar={activeThread.alumniAvatar} name={activeThread.alumniName} className="w-10 h-10 rounded-full bg-slate-100 border border-black flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform" />
                             <div className="text-left select-none">
                               <h4 className="text-xs font-black uppercase leading-tight group-hover:underline">{activeThread.alumniName}</h4>
                               <p className="text-[9px] text-zinc-500 font-mono font-bold group-hover:text-blue-700">{activeThread.alumniRole} (View Full Journey ➔)</p>
@@ -11413,29 +11697,36 @@ export default function App() {
           </div>
         )}
 
+        {/* O*NET CAREER EXPLORER VIEW */}
+        {user && currentView === 'onet-careers' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <OnetCareerExplorer />
+          </div>
+        )}
+
         {/* 6. USER PROFILE / EXPERIENCE SUBMISSION BOARD */}
         {user && currentView === 'profile' && (
-          <div className="max-w-3xl mx-auto px-6 py-10 space-y-6 animate-fade-in">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6 animate-fade-in">
               <div className="border-2 border-black bg-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 
                 <div className="text-center pb-6 border-b border-black">
                   {/* Interactive profile picture container */}
                   <div 
                     onClick={() => setShowPhotoModal(true)}
-                    className="relative w-24 h-24 rounded-full bg-amber-100 border-2 border-black mx-auto mb-4 overflow-hidden group cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center text-4xl select-none"
-                    title="Click or hover to change photo"
+                    className="relative w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden group cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:scale-105 active:scale-95 transition-all select-none"
+                    title="Click to change photo or choose custom illustration"
                     id="profile-picture-container-interactive"
                   >
-                    {(user.avatar.length > 4 && (user.avatar.startsWith('http') || user.avatar.startsWith('data:image/'))) ? (
-                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      <span className={`${user.avatar.length <= 2 ? 'text-2xl font-black tracking-tight font-mono text-amber-950' : 'text-4xl'}`}>
-                        {user.avatar}
-                      </span>
-                    )}
+                    <AvatarDisplay 
+                      avatar={user.avatar} 
+                      name={user.name} 
+                      className="w-24 h-24 rounded-full bg-amber-100 border-2 border-black flex items-center justify-center overflow-hidden" 
+                      textClassName="text-3xl font-black font-mono text-amber-950"
+                    />
                     {/* Hover change photo overlay */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-center px-1">Change Photo</span>
+                    {/* Hover change photo overlay */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-center">Change Photo</span>
                     </div>
                   </div>
 
@@ -11447,6 +11738,16 @@ export default function App() {
                     onChange={handlePhotoUpload}
                     className="hidden"
                     id="profile-picture-hidden-file-input"
+                  />
+                  {/* Hidden file input for camera capture */}
+                  <input 
+                    type="file"
+                    ref={cameraInputRef}
+                    accept="image/*"
+                    capture="user"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="profile-picture-camera-file-input"
                   />
 
                   <h3 className="text-2xl font-display font-black uppercase mb-0.5">{user.name}</h3>
@@ -11498,31 +11799,16 @@ export default function App() {
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-gray-500 mb-2">Change Avatar Character</label>
-                        <div className="flex gap-2 text-xl border-2 border-black p-2 justify-around bg-white">
-                          {['👩‍💼', '👨‍💻', '👩‍🔬', '👷', '👨‍💼', '🎨'].map(char => (
-                            <span 
-                              key={char} 
-                              onClick={() => setProfileEditForm({...profileEditForm, avatar: char})}
-                              className={`cursor-pointer p-1 rounded hover:scale-125 transition-transform ${profileEditForm.avatar === char ? 'bg-yellow-250' : ''}`}
-                            >
-                              {char}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
                       <div className="flex gap-2 pt-2">
                         <button 
                           onClick={handleSaveProfileChanges}
-                          className="flex-1 py-1.5 bg-black text-white hover:bg-stone-800 text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+                          className="flex-1 py-1.5 bg-black text-white hover:bg-stone-800 text-[10px] font-black uppercase border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none cursor-pointer"
                         >
                           Save Changes
                         </button>
                         <button 
                           onClick={() => setIsEditingProfile(false)}
-                          className="py-1.5 bg-white text-black hover:bg-stone-100 text-[10px] font-black uppercase border border-black"
+                          className="py-1.5 bg-white text-black hover:bg-stone-100 text-[10px] font-black uppercase border border-black cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -11540,7 +11826,7 @@ export default function App() {
                           });
                           setIsEditingProfile(true);
                         }}
-                        className="w-full py-2 bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black text-xs font-black uppercase tracking-wider transition-colors mb-4"
+                        className="w-full py-2 bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black text-xs font-black uppercase tracking-wider transition-colors mb-4 cursor-pointer"
                       >
                         ✏️ Edit Profile Info
                       </button>
@@ -11569,7 +11855,7 @@ export default function App() {
 
                     <div className="flex justify-between items-center bg-red-50 p-2 border border-red-200 rounded">
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-red-650 text-red-600">Permanent Deletion</span>
+                        <span className="text-xs font-bold text-red-600">Permanent Deletion</span>
                         <span className="text-[9px] text-gray-400 font-medium">Deletes your profile</span>
                       </div>
                       <button 
@@ -11583,6 +11869,8 @@ export default function App() {
                 </div>
 
               </div>
+
+              
 
               {/* Submit Feedback Component */}
               <div className="border-2 border-black p-6 bg-amber-50/60 dark:bg-zinc-850 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-4">
@@ -12068,11 +12356,19 @@ export default function App() {
                   }
                   const allComments = courseReviews.map(f => {
                     const matchedPath = getAllPossiblePathways().find(p => isCourseIdEquivalent(p.id, f.courseId));
+                    const isCurrentUser = user && (
+                      f.userId === user.id ||
+                      f.userEmail === user.email ||
+                      f.authorEmail === user.email ||
+                      f.email === user.email ||
+                      (user.name && f.name && f.name.toLowerCase() === user.name.toLowerCase())
+                    );
+                    const avatarToUse = isCurrentUser ? (user.avatar || f.avatar) : (f.avatar || f.photoURL || "🎓");
                     return {
                       id: f.feedbackId || f.id,
                       name: f.name || "Verified Alumni",
                       role: f.role || f.currentJobRole || ("Graduate " + (matchedPath?.name || f.courseName || "General Course")),
-                      avatar: f.avatar || f.photoURL || "🎓",
+                      avatar: avatarToUse,
                       institution: f.institutionName || f.institution || "DIRPA Counseling Network",
                       yearCompleted: f.completionYear || "2024",
                       experience: f.feedbackText || "",
@@ -12129,7 +12425,7 @@ export default function App() {
                                 } as any)}
                                 className="flex items-center gap-2 cursor-pointer hover:bg-stone-50 dark:hover:bg-zinc-800 p-1.5 border border-transparent hover:border-black/10 dark:hover:border-zinc-700/50 rounded transition"
                               >
-                                <span className="text-lg bg-orange-100 dark:bg-zinc-800 p-1 border border-black rounded-full leading-none">🎓</span>
+                                <AvatarDisplay avatar={comment.avatar} name={comment.name} className="w-8 h-8 rounded-full bg-orange-100 dark:bg-zinc-800 border border-black flex items-center justify-center overflow-hidden shrink-0" />
                                 <div>
                                   <span className="font-extrabold text-xs block text-[#1A1A1A] dark:text-[#F3F4F6]">{comment.name}</span>
                                   <span className="text-[9px] font-mono text-gray-400 uppercase">{comment.role || "Alumni Contributor"}</span>
@@ -12481,12 +12777,27 @@ export default function App() {
 
                 {/* Big Avatar Frame Container */}
                 <div className="flex flex-col items-center text-center space-y-3 pt-4">
-                  <div className="w-32 h-32 rounded-full bg-stone-105 border-4 border-black flex items-center justify-center text-5xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0 relative">
-                    {selectedAlumni.avatar.startsWith('http') ? (
-                      <img src={selectedAlumni.avatar} alt={selectedAlumni.name} className="w-full h-full object-cover" />
-                    ) : (
-                      selectedAlumni.avatar
-                    )}
+                  <div className="w-32 h-32 rounded-full overflow-hidden shrink-0 relative flex items-center justify-center">
+                    {(() => {
+                      const isCurrentUserAlumni = user && (
+                        user.id === selectedAlumni.id ||
+                        user.id === (selectedAlumni as any).userId ||
+                        (user.email && (user.email === selectedAlumni.id || user.email === (selectedAlumni as any).authorEmail || user.email === (selectedAlumni as any).userEmail)) ||
+                        (user.name && selectedAlumni.name && user.name.toLowerCase() === selectedAlumni.name.toLowerCase())
+                      );
+                      const displayAvatar = isCurrentUserAlumni 
+                        ? (user.avatar || selectedAlumniProfile?.avatar || selectedAlumni.avatar)
+                        : (selectedAlumniProfile?.avatar || selectedAlumniProfile?.photoURL || selectedAlumni.avatar);
+
+                      return (
+                        <AvatarDisplay 
+                          avatar={displayAvatar} 
+                          name={fullName} 
+                          className="w-32 h-32 rounded-full bg-stone-105 border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0" 
+                          textClassName="text-4xl font-black font-mono text-amber-950"
+                        />
+                      );
+                    })()}
                   </div>
                   <div>
                     <span className="text-[9px] font-bold tracking-widest bg-emerald-100 text-emerald-900 border border-black px-2 py-0.5 uppercase mb-1.5 inline-block">
@@ -13180,10 +13491,10 @@ export default function App() {
       {/* Instagram-style Photo Action Sheet Modal */}
       {showPhotoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" id="photo-customization-modal">
-          <div className="bg-white border-2 border-black w-full max-w-sm rounded-xl overflow-hidden">
-            <div className="p-6 text-center border-b border-black">
+          <div className="bg-white border-2 border-black w-full max-w-sm rounded-xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="p-6 text-center border-b border-black bg-amber-50">
               <h3 className="text-lg font-display font-black uppercase text-black">Change Profile Photo</h3>
-              <p className="text-xs text-gray-500 mt-1">Upload a custom image or reset to default letter-initials.</p>
+              <p className="text-xs text-gray-600 mt-1">Select an avatar source or choose from 24 custom illustrations.</p>
             </div>
             
             <div className="flex flex-col font-sans">
@@ -13195,21 +13506,45 @@ export default function App() {
                   }
                   setShowPhotoModal(false);
                 }}
-                className="py-4 text-sm font-black text-blue-600 hover:bg-gray-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center"
+                className="py-3.5 px-4 text-xs font-black uppercase tracking-wider text-blue-700 hover:bg-blue-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
               >
-                Upload Photo
+                🖼️ From gallery
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPhotoModal(false);
+                  setShowCameraModal(true);
+                }}
+                className="py-3.5 px-4 text-xs font-black uppercase tracking-wider text-emerald-700 hover:bg-emerald-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                📷 Take photo
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPhotoModal(false);
+                  setShowIllustrationsModal(true);
+                }}
+                className="py-3.5 px-4 text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-100 hover:bg-amber-200 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                🎨 Select custom illustrations
+              </button>
+
               <button
                 type="button"
                 onClick={handleRemovePhoto}
-                className="py-4 text-sm font-black text-red-600 hover:bg-gray-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center"
+                className="py-3 px-4 text-xs font-bold text-red-600 hover:bg-red-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
               >
-                Remove Current Photo
+                🗑️ Remove photo / reset
               </button>
+
               <button
                 type="button"
                 onClick={() => setShowPhotoModal(false)}
-                className="py-4 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none cursor-pointer text-center"
+                className="py-3.5 px-4 text-xs font-black uppercase text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none cursor-pointer text-center"
               >
                 Cancel
               </button>
@@ -13217,6 +13552,25 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Live Camera Capture Modal */}
+      <CameraCaptureModal
+        isOpen={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onCapture={(dataUrl) => {
+          handleUpdateAvatarDirectly(dataUrl);
+        }}
+      />
+
+      {/* Custom Illustration Selector Pop-up Modal */}
+      <IllustrationSelector
+        isOpen={showIllustrationsModal}
+        onClose={() => setShowIllustrationsModal(false)}
+        currentAvatar={user?.avatar || ''}
+        onSelectAvatar={(selectedAvatarIdOrUrl) => {
+          handleUpdateAvatarDirectly(selectedAvatarIdOrUrl);
+        }}
+      />
 
       {/* Custom Confirmation Modal for Delete Account */}
       {showDeleteConfirm && (
@@ -13752,7 +14106,7 @@ export default function App() {
 
       {/* ================= DELAYED USER FEEDBACK PROMPT MODAL / TOAST ================= */}
       <AnimatePresence>
-        {showDelayedFeedbackPrompt && user && (
+        {showDelayedFeedbackPrompt && user && !user.hasSubmittedPlatformFeedback && (
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -13868,17 +14222,13 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <span className="text-[10px] font-mono font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest block">
-                // COMMUNITY FEEDBACK & REVIEWS
+                {t('reviews.badge', '// COMMUNITY FEEDBACK & REVIEWS')}
               </span>
               <h3 className="text-xl md:text-2xl font-display font-black uppercase text-black dark:text-white">
-                What DIRPA Users Say
+                {t('reviews.header', 'What DIRPA Users Say')}
               </h3>
             </div>
-            {platformReviews.length > 0 && (
-              <span className="text-xs font-mono font-bold text-stone-500 dark:text-zinc-400">
-                Hover to pause scroll ⏸️
-              </span>
-            )}
+            
           </div>
 
           {/* Marquee Track Container */}
@@ -13888,24 +14238,34 @@ export default function App() {
             <div className="absolute right-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-l from-[#f8fafc] dark:from-zinc-950 to-transparent z-10 pointer-events-none" />
 
             {(() => {
-              const dbItems = platformReviews.map(f => ({
-                id: f.id || f.feedbackId,
-                name: f.name || 'DIRPA Student',
-                role: f.role || f.educationalStage || 'Student Reviewer',
-                feedbackText: f.feedbackText || f.comment || f.experience || 'Great platform for academic career navigation!',
-                avatar: f.avatar || '',
-                overallRating: f.overallRating || 5
-              }));
+              const dbItems = platformReviews.map(f => {
+                const isCurrentUser = user && (
+                  f.userId === user.id ||
+                  f.userEmail === user.email ||
+                  f.authorEmail === user.email ||
+                  f.email === user.email ||
+                  (user.name && f.name && f.name.toLowerCase() === user.name.toLowerCase())
+                );
+                const avatarToUse = isCurrentUser ? (user.avatar || f.avatar) : f.avatar;
+                return {
+                  id: f.id || f.feedbackId,
+                  name: f.name || 'DIRPA Student',
+                  role: f.role || f.educationalStage || 'Student Reviewer',
+                  feedbackText: f.feedbackText || f.comment || f.experience || 'Great platform for academic career navigation!',
+                  avatar: avatarToUse || '',
+                  overallRating: f.overallRating || 5
+                };
+              });
 
               if (dbItems.length === 0) {
                 return (
                   <div className="max-w-xl mx-auto my-4 p-6 border-2 border-dashed border-stone-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl text-center space-y-2">
                     <Quote className="w-8 h-8 text-amber-500 mx-auto opacity-80" />
                     <p className="text-sm font-bold text-black dark:text-white uppercase tracking-tight">
-                      No Community Feedbacks Yet
+                      {t('reviews.noReviews', 'No Community Feedbacks Yet')}
                     </p>
                     <p className="text-xs text-stone-500 dark:text-zinc-400">
-                      Be the first student or alumni mentor to share your review! Head to your Profile section to submit feedback.
+                      {t('reviews.noReviewsDesc', 'Be the first student or alumni mentor to share your review! Head to your Profile section to submit feedback.')}
                     </p>
                   </div>
                 );
@@ -13931,17 +14291,11 @@ export default function App() {
                         {/* Card Header */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
-                            {item.avatar && (item.avatar.startsWith('http') || item.avatar.startsWith('data:image/')) ? (
-                              <img
-                                src={item.avatar}
-                                alt={item.name}
-                                className="w-10 h-10 rounded-full border border-stone-200 dark:border-zinc-700 object-cover shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-black text-sm flex items-center justify-center shrink-0">
-                                {item.name ? item.name.charAt(0).toUpperCase() : 'D'}
-                              </div>
-                            )}
+                            <AvatarDisplay 
+                              avatar={item.avatar} 
+                              name={item.name} 
+                              className="w-10 h-10 rounded-full border border-stone-200 dark:border-zinc-700 bg-amber-100 flex items-center justify-center shrink-0" 
+                            />
                             <div className="min-w-0 pr-2">
                               <h4 className="font-bold text-sm text-black dark:text-white truncate">
                                 {item.name}

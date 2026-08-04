@@ -170,6 +170,21 @@
         "feedbackText",
         "overallRating"
       ]
+    },
+    "Illustration": {
+      "title": "Illustration Asset",
+      "description": "Pre-seeded custom avatar illustrations metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "badge": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "url"]
     }
   },
   "firestore": {
@@ -204,6 +219,10 @@
     "/flowchart_feedbacks/{reportId}": {
       "schema": "FlowchartFeedback",
       "description": "User reports on inaccurate or missing pathway connections in the flowchart."
+    },
+    "/illustrations/{illustrationId}": {
+      "schema": "Illustration",
+      "description": "Custom avatar illustrations catalog."
     }
   }
 }
