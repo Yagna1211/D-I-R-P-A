@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Compass, MapPin, ArrowRight, GraduationCap, Briefcase, Award, Target } from 'lucide-react';
 import DirpaLogo, { getActiveLogoStyle } from './DirpaLogo';
@@ -14,7 +14,8 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
   // Interactive path drawing trigger state
   const [drawPath, setDrawPath] = useState(false);
 
-  const onCompleteRef = useRef(onComplete);
+  // Preserve onComplete reference without re-triggering timers on parent re-renders
+  const onCompleteRef = React.useRef(onComplete);
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
@@ -23,30 +24,38 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
     // Stage 1: Big DIRPA Entry. Set path to begin drawing after logo settles
     const timerPath = setTimeout(() => {
       setDrawPath(true);
-    }, 500);
+    }, 300);
 
     // Stage 2: Minimize DIRPA logo and reveal "Discover your path!"
     const timerMinimize = setTimeout(() => {
       setStage('minimize-reveal');
-    }, 1605);
+    }, 1400);
 
     // Stage 3: Initiate 100% Full-Screen Staggered Curtain wipe
     const timerWipe = setTimeout(() => {
       setStage('curtain-wipe');
-    }, 4500);
+    }, 3200);
 
     // Stage 4: Fully finalize & unmount
     const timerDone = setTimeout(() => {
+      setStage('done');
       onCompleteRef.current();
-    }, 5300);
+    }, 3900);
+
+    // Safety fallback: Ensure onComplete is called after 4.5 seconds maximum
+    const timerSafety = setTimeout(() => {
+      setStage('done');
+      onCompleteRef.current();
+    }, 4500);
 
     return () => {
       clearTimeout(timerPath);
       clearTimeout(timerMinimize);
       clearTimeout(timerWipe);
       clearTimeout(timerDone);
+      clearTimeout(timerSafety);
     };
-  }, []);
+  }, []); // Empty dependency array ensures timers are never reset mid-sequence
 
   // Letters of DIRPA
   const brandLetters = ["D", "I", "R", "P", "A"];
@@ -60,12 +69,10 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
     { text: "Direct B.Tech Year 2 (AP ECET)", x: "50%", y: "82%", color: "bg-purple-100 text-purple-800", icon: Briefcase },
   ];
 
-  // Manual Skip handler with accelerated exit animation
+  // Manual Skip handler with accelerated exit
   const handleSkip = () => {
-    setStage('curtain-wipe');
-    setTimeout(() => {
-      onCompleteRef.current();
-    }, 600);
+    setStage('done');
+    onCompleteRef.current();
   };
 
   return (
@@ -73,10 +80,12 @@ export default function LandingAnimation({ onComplete }: LandingAnimationProps) 
       {stage !== 'done' && (
         <div id="landing-splash-overlay" className="fixed inset-0 z-50 overflow-hidden select-none bg-stone-100">
           
-          {/* Skip Intro Button */}
+          {/* SKIP INTRO BUTTON */}
           <button
+            type="button"
             onClick={handleSkip}
-            className="absolute top-6 right-6 z-50 font-mono font-extrabold text-xs text-black uppercase tracking-widest bg-amber-300 hover:bg-amber-400 px-3.5 py-1.5 border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-1.5"
+            className="absolute top-6 right-6 z-50 px-4 py-2 bg-black text-amber-300 border-2 border-black font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-[3px_3px_0px_0px_rgba(245,158,11,1)] hover:bg-zinc-800 active:translate-x-0.5 active:translate-y-0.5 cursor-pointer transition-all"
+            title="Skip intro animation"
           >
             <span>Skip Intro</span>
             <ArrowRight className="w-3.5 h-3.5" />

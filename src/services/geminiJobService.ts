@@ -28,13 +28,13 @@ export interface IndianJobSearchResponse {
   citations?: { title: string; url: string }[];
 }
 
-export async function fetchIndianJobData(query: string): Promise<IndianJobSearchResponse> {
+export async function fetchIndianJobData(query: string, lang?: string): Promise<IndianJobSearchResponse> {
   const response = await fetch('/api/jobs/india', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, lang: lang || 'en' }),
   });
 
   if (!response.ok) {

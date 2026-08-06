@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   GraduationCap,
   BookOpen,
@@ -51,11 +51,13 @@ import {
   Quote
 } from 'lucide-react';
 import { ACADEMIC_PATHWAYS, GENERAL_STATISTICS, INTERMEDIATE_GROUPS, POLYTECHNIC_DIPLOMAS, ITI_VOCATIONAL_TRADES } from './data/coursesData';
+import { getLocalizedPathway, getLocalizedPathways } from './i18n/localizeData';
 import { AcademicPathway, AlumniInsight, ChatThread, Message, SavedPath, TimelineEvent } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import LandingAnimation from './components/LandingAnimation';
 import AlumniOnboardingWizard from './components/AlumniOnboardingWizard';
 import { OnetCareerExplorer } from './components/OnetCareerExplorer';
+import { EntranceExamsInfo } from './components/EntranceExamsInfo';
 import DirpaLogo, { getActiveLogoStyle, LogoStyle } from './components/DirpaLogo';
 import Markdown from 'react-markdown';
 import { jsPDF } from 'jspdf';
@@ -67,6 +69,7 @@ import { AvatarDisplay, resolveAvatarUrl } from './components/AvatarDisplay';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import RegionSelector from './components/RegionSelector';
+import { TranslatableText } from './components/TranslatableText';
 export { resolveAvatarUrl };
 
 export const seedIllustrationsToFirestore = async () => {
@@ -459,24 +462,23 @@ const safeLocalStorage = {
   }
 };
 
-const HERO_TITLES = [
-  "DON'T FOLLOW THE CROWD, FIND YOUR PATH",
-  "भीड़ का पीछा न करें, अपना रास्ता खोजें",
-  "గుంపును అనుసరించవద్దు, మీ మార్గాన్ని కనుగొనండి",
-  "கூட்டத்தைப் பின்தொடராதே, உனக்கான பாதையைக் கண்டறி"
-];
-
 export default function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [showLandingAnimation, setShowLandingAnimation] = useState<boolean>(true);
+  const handleLandingAnimationComplete = React.useCallback(() => {
+    setShowLandingAnimation(false);
+  }, []);
   const [activeLogo, setActiveLogo] = useState<LogoStyle>(getActiveLogoStyle());
   const [showPost10thChoice, setShowPost10thChoice] = useState<boolean>(false);
   const [heroTitleIndex, setHeroTitleIndex] = useState<number>(0);
 
-  const handleAnimationComplete = useCallback(() => {
-    setShowLandingAnimation(false);
-  }, []);
+  const heroTitles = [
+    "DON'T FOLLOW THE CROWD, FIND YOUR PATH",
+    "भीड़ का पीछा न करें, अपना रास्ता खोजें",
+    "గుంపును అనుసరించవద్దు, మీ మార్గాన్ని కనుగొనండి",
+    "கூட்டத்தைப் பின்தொடராதே, உனக்கான பாதையைக் கண்டறி"
+  ];
 
   useEffect(() => {
     const handleLogoUpdate = (e: Event) => {
@@ -527,7 +529,7 @@ export default function App() {
               name: data.name || firebaseUser.displayName || 'Google User',
               email: userEmail,
               role: data.role || 'student',
-              avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '/illustrations/person1.png',
+              avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '',
               interests: data.interests || [],
               strengths: data.strengths || [],
               careerGoal: data.careerGoal || '',
@@ -613,18 +615,18 @@ export default function App() {
 
   // Navigation & User views
   // 'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'roadmap' | 'insights' | 'role-selection'
-  const [currentView, setCurrentView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'role-selection' | 'alumni-onboarding' | 'reset-password' | 'onet-careers'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'role-selection' | 'alumni-onboarding' | 'reset-password' | 'onet-careers' | 'entrance-exams'>('landing');
 
   useEffect(() => {
     if (currentView === 'landing') {
       const interval = setInterval(() => {
-        setHeroTitleIndex((prev) => (prev + 1) % HERO_TITLES.length);
+        setHeroTitleIndex((prev) => (prev + 1) % heroTitles.length);
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [currentView]);
-  const [selectedNav, setSelectedNav] = useState<'home' | 'messages' | 'saved' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'onet-careers'>('home');
-  const [previousView, setPreviousView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'about' | 'onet-careers'>('landing');
+  }, [currentView, heroTitles.length]);
+  const [selectedNav, setSelectedNav] = useState<'home' | 'messages' | 'saved' | 'profile' | 'ai-advisor' | 'insights' | 'about' | 'onet-careers' | 'entrance-exams'>('home');
+  const [previousView, setPreviousView] = useState<'landing' | 'auth' | 'dashboard' | 'saved' | 'messages' | 'profile' | 'ai-advisor' | 'about' | 'onet-careers' | 'entrance-exams'>('landing');
 
   // User Authentication State
   const [user, setUser] = useState<{
@@ -647,7 +649,7 @@ export default function App() {
     email: '',
     password: '',
     role: 'student' as 'student' | 'alumni',
-    avatar: '/illustrations/person1.png',
+    avatar: '',
     isGoogle: false,
     bio: ''
   });
@@ -665,7 +667,7 @@ export default function App() {
     name: '',
     email: '',
     bio: '',
-    avatar: '/illustrations/person1.png'
+    avatar: ''
   });
 
   // Profile picture customization variables
@@ -690,20 +692,62 @@ export default function App() {
     return name.slice(0, 2).toUpperCase();
   };
 
+  const compressImageDataUrl = (dataUrl: string, maxDim = 256, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+        resolve(dataUrl);
+        return;
+      }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
   const handleUpdateAvatarDirectly = async (newAvatar: string) => {
     if (!user) return;
+
+    let finalAvatar = newAvatar;
+    if (newAvatar && newAvatar.startsWith('data:image/')) {
+      finalAvatar = await compressImageDataUrl(newAvatar, 256, 0.75);
+    }
+
     const updatedUser = {
       ...user,
-      avatar: newAvatar
+      avatar: finalAvatar
     };
     setUser(updatedUser);
-    setProfileEditForm(prev => ({ ...prev, avatar: newAvatar }));
+    setProfileEditForm(prev => ({ ...prev, avatar: finalAvatar }));
 
     const updatedRecords = registeredUsers.map(u => {
       if (u.id === user.id || (user.email && u.email && u.email.toLowerCase() === user.email.toLowerCase())) {
         return {
           ...u,
-          avatar: newAvatar
+          avatar: finalAvatar
         };
       }
       return u;
@@ -715,8 +759,8 @@ export default function App() {
     try {
       const userRef = doc(db, 'users', user.id);
       await setDoc(userRef, {
-        avatar: newAvatar,
-        photoURL: newAvatar,
+        avatar: finalAvatar,
+        photoURL: finalAvatar,
         updatedAt: new Date().toISOString()
       }, { merge: true });
     } catch (err) {
@@ -728,7 +772,7 @@ export default function App() {
       const isAuthor = rev.userId === user.id || 
                        (user.email && (rev.userEmail === user.email || rev.authorEmail === user.email || rev.email === user.email)) || 
                        (user.name && rev.name && rev.name.toLowerCase() === user.name.toLowerCase());
-      return isAuthor ? { ...rev, avatar: newAvatar, photoURL: newAvatar } : rev;
+      return isAuthor ? { ...rev, avatar: finalAvatar, photoURL: finalAvatar } : rev;
     }));
 
     // 2. Update dbFeedbacks and courseReviews in local state
@@ -736,14 +780,14 @@ export default function App() {
       const isAuthor = fb.userId === user.id || 
                        (user.email && (fb.userEmail === user.email || fb.authorEmail === user.email || fb.email === user.email)) || 
                        (user.name && fb.name && fb.name.toLowerCase() === user.name.toLowerCase());
-      return isAuthor ? { ...fb, avatar: newAvatar, authorAvatar: newAvatar } : fb;
+      return isAuthor ? { ...fb, avatar: finalAvatar, authorAvatar: finalAvatar } : fb;
     }));
 
     setCourseReviews(prev => prev.map(cr => {
       const isAuthor = cr.userId === user.id || 
                        (user.email && (cr.userEmail === user.email || cr.authorEmail === user.email || cr.email === user.email)) || 
                        (user.name && cr.name && cr.name.toLowerCase() === user.name.toLowerCase());
-      return isAuthor ? { ...cr, avatar: newAvatar, authorAvatar: newAvatar } : cr;
+      return isAuthor ? { ...cr, avatar: finalAvatar, authorAvatar: finalAvatar } : cr;
     }));
 
     // 3. Update current comments authored by this user
@@ -753,7 +797,7 @@ export default function App() {
         if ((user.email && ins.authorEmail === user.email) || (ins as any).userId === user.id || (user.name && ins.name && ins.name.toLowerCase() === user.name.toLowerCase())) {
           return {
             ...ins,
-            avatar: newAvatar
+            avatar: finalAvatar
           };
         }
         return ins;
@@ -764,10 +808,10 @@ export default function App() {
     setChatThreads(prev => prev.map((t: any) => {
       let updated = { ...t };
       if (t.userId === user.id || (user.email && t.userEmail === user.email)) {
-        updated.userAvatar = newAvatar;
+        updated.userAvatar = finalAvatar;
       }
       if (t.alumniId === user.id || (user.email && t.alumniEmail === user.email) || (user.name && t.alumniName && t.alumniName.toLowerCase() === user.name.toLowerCase())) {
-        updated.alumniAvatar = newAvatar;
+        updated.alumniAvatar = finalAvatar;
       }
       return updated;
     }));
@@ -782,7 +826,7 @@ export default function App() {
                          (user.email && (d.userEmail === user.email || d.authorEmail === user.email || d.email === user.email)) || 
                          (user.name && d.name && d.name.toLowerCase() === user.name.toLowerCase());
         if (isAuthor) {
-          await updateDoc(doc(db, 'platform_reviews', dSnap.id), { avatar: newAvatar, photoURL: newAvatar });
+          await updateDoc(doc(db, 'platform_reviews', dSnap.id), { avatar: finalAvatar, photoURL: finalAvatar });
         }
       });
     } catch (e) {
@@ -799,7 +843,7 @@ export default function App() {
                          (user.email && (d.userEmail === user.email || d.authorEmail === user.email || d.email === user.email)) || 
                          (user.name && d.name && d.name.toLowerCase() === user.name.toLowerCase());
         if (isAuthor) {
-          await updateDoc(doc(db, 'feedbacks', dSnap.id), { avatar: newAvatar, authorAvatar: newAvatar });
+          await updateDoc(doc(db, 'feedbacks', dSnap.id), { avatar: finalAvatar, authorAvatar: finalAvatar });
         }
       });
     } catch (e) {
@@ -812,9 +856,10 @@ export default function App() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64String = reader.result as string;
-      handleUpdateAvatarDirectly(base64String);
+      const compressed = await compressImageDataUrl(base64String, 256, 0.75);
+      handleUpdateAvatarDirectly(compressed);
     };
     reader.readAsDataURL(file);
     if (fileInputRef.current) {
@@ -824,8 +869,7 @@ export default function App() {
 
   const handleRemovePhoto = () => {
     if (!user) return;
-    const initials = getInitials(user.name);
-    handleUpdateAvatarDirectly(initials);
+    handleUpdateAvatarDirectly('');
     setShowPhotoModal(false);
   };
 
@@ -3014,7 +3058,7 @@ export default function App() {
           name: data.name || firebaseUser.displayName || 'Google User',
           email: firebaseUser.email,
           role: data.role || 'student',
-          avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '/illustrations/person1.png',
+          avatar: data.avatar || data.photoURL || firebaseUser.photoURL || '',
           interests: data.interests || [],
           strengths: data.strengths || [],
           careerGoal: data.careerGoal || '',
@@ -3050,7 +3094,7 @@ export default function App() {
               name: data.name || 'Google Sandbox User',
               email: userEmail,
               role: data.role || 'student',
-              avatar: data.avatar || '/illustrations/person1.png',
+              avatar: data.avatar || '',
               interests: data.interests || [],
               strengths: data.strengths || [],
               careerGoal: data.careerGoal || '',
@@ -3065,7 +3109,7 @@ export default function App() {
               ...anonUser,
               displayName: 'Google Sandbox User',
               email: userEmail,
-              photoURL: '/illustrations/person1.png'
+              photoURL: ''
             } as any);
             setCurrentView('role-selection');
           }
@@ -3107,7 +3151,7 @@ export default function App() {
         name: finalName,
         email: tempGoogleUser.email,
         role: chosenRole,
-        avatar: tempGoogleUser.photoURL || '/illustrations/person1.png',
+        avatar: tempGoogleUser.photoURL || '',
         interests: defaultInterests,
         strengths: defaultStrengths,
         careerGoal: defaultGoal,
@@ -3117,7 +3161,7 @@ export default function App() {
       await setDoc(userRef, {
         ...newUserObj,
         uid: tempGoogleUser.uid,
-        photoURL: tempGoogleUser.photoURL || '/illustrations/person1.png',
+        photoURL: tempGoogleUser.photoURL || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
@@ -4890,7 +4934,7 @@ export default function App() {
       const response = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiInputs)
+        body: JSON.stringify({ ...aiInputs, lang: i18n.language })
       });
 
       if (!response.ok) {
@@ -4916,7 +4960,7 @@ export default function App() {
       const response = await fetch('/api/search-courses-web', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userQuery: webSearchQuery })
+        body: JSON.stringify({ userQuery: webSearchQuery, lang: i18n.language })
       });
 
       if (!response.ok) {
@@ -6576,7 +6620,7 @@ export default function App() {
 
       <AnimatePresence>
         {showLandingAnimation && !initializingAuth && (
-          <LandingAnimation onComplete={handleAnimationComplete} />
+          <LandingAnimation onComplete={handleLandingAnimationComplete} />
         )}
       </AnimatePresence>
 
@@ -6603,10 +6647,7 @@ export default function App() {
 
         <div className="flex items-center gap-3">
           {currentView !== 'landing' && (
-            <>
-              <RegionSelector variant="header" isDarkMode={isDarkMode} />
-              <LanguageSwitcher variant="header" isDarkMode={isDarkMode} />
-            </>
+            <LanguageSwitcher variant="header" isDarkMode={isDarkMode} />
           )}
           {user ? (
             <div className="flex items-center gap-6 md:gap-10">
@@ -6620,28 +6661,6 @@ export default function App() {
                   }`}
                 >
                   {t('nav.home', 'Home')}
-                </li>
-                {user.role !== 'alumni' && (
-                  <li 
-                    onClick={() => { setSelectedNav('ai-advisor'); setCurrentView('ai-advisor'); }}
-                    className={`cursor-pointer pb-1 transition-all ${
-                      selectedNav === 'ai-advisor' 
-                        ? 'text-black border-b-2 border-black opacity-100' 
-                        : 'text-gray-500 hover:text-black opacity-60'
-                    }`}
-                  >
-                    {t('nav.aiAdvisor', 'AI Advisor')}
-                  </li>
-                )}
-                <li 
-                  onClick={() => { setSelectedNav('onet-careers'); setCurrentView('onet-careers'); }}
-                  className={`cursor-pointer pb-1 transition-all flex items-center gap-1 ${
-                    selectedNav === 'onet-careers' 
-                      ? 'text-black border-b-2 border-black opacity-100 font-extrabold' 
-                      : 'text-gray-500 hover:text-black opacity-60'
-                  }`}
-                >
-                  {t('nav.jobInfo', 'Job Info')}
                 </li>
                 <li 
                   onClick={handleOpenMessagesTab}
@@ -6658,18 +6677,6 @@ export default function App() {
                     </span>
                   )}
                 </li>
-                {user.role !== 'alumni' && (
-                  <li 
-                    onClick={() => { setSelectedNav('saved'); setCurrentView('saved'); }}
-                    className={`cursor-pointer pb-1 transition-all ${
-                      selectedNav === 'saved' 
-                        ? 'text-black border-b-2 border-black opacity-100' 
-                        : 'text-gray-500 hover:text-black opacity-60'
-                    }`}
-                  >
-                    {t('nav.savedPaths', 'Saved Paths')}
-                  </li>
-                )}
                 <li 
                   onClick={() => { setSelectedNav('profile'); setCurrentView('profile'); }}
                   className={`cursor-pointer pb-1 transition-all ${
@@ -6967,7 +6974,7 @@ export default function App() {
               }}
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-black uppercase max-w-5xl mb-6 text-black dark:text-white leading-[1.05]"
             >
-              {HERO_TITLES[heroTitleIndex]}
+              {heroTitles[heroTitleIndex]}
             </motion.h1>
 
             <motion.p 
@@ -7637,14 +7644,14 @@ export default function App() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className={`max-w-7xl mx-auto px-6 py-6 md:py-10 ${isComparing ? "w-full space-y-6" : "grid grid-cols-1 lg:grid-cols-3 gap-8"}`}
+            className={`max-w-7xl mx-auto px-6 py-6 md:py-10 ${isComparing || searchMethod !== 'none' ? "w-full space-y-6" : "grid grid-cols-1 lg:grid-cols-3 gap-8"}`}
           >
             
-            {/* Left Area - 2 Columns (Main Hub / Interactive Explorer) - Expand to Full Width when comparing */}
-            <div className={isComparing ? "w-full space-y-6" : "lg:col-span-2 space-y-8"}>
+            {/* Left Area - 2 Columns (Main Hub / Interactive Explorer) - Expand to Full Width when comparing or searching */}
+            <div className={isComparing || searchMethod !== 'none' ? "w-full space-y-6" : "lg:col-span-2 space-y-8"}>
               
-              {/* User Custom Welcomer Card */}
-              {!isComparing && (
+              {/* User Custom Welcomer Card (HOME PAGE ONLY) */}
+              {!isComparing && searchMethod === 'none' && (
                 <div className="border-2 border-black p-8 bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4">
           
@@ -7676,7 +7683,7 @@ export default function App() {
               )}
 
               {/* Primary Choices Grid or Specific Search Panel (Job Search vs Class Selection) */}
-              {!isComparing && user.role === 'alumni' && (
+              {!isComparing && searchMethod === 'none' && user.role === 'alumni' && (
                 <div className="space-y-6 text-[#1A1A1A]">
                   {/* STATS HEADER / INTRO */}
                   <div className="border-2 border-black p-6 bg-green-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[#1A1A1A] dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-100">
@@ -8021,57 +8028,218 @@ export default function App() {
                     <div className="space-y-6">
                   {/* SEARCH OPTIONS HOME SCREEN */}
                   {searchMethod === 'none' && (
-                    <div className="border-2 border-black p-6 bg-slate-50/50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left">
-                      <div className="mb-4">
-                        <span className="text-[10px] font-mono font-black text-blue-700 bg-blue-100 px-2 py-0.5 border border-blue-200 uppercase tracking-widest">{t('home.strategyTag', '// NAVIGATION STRATEGY SELECTION')}</span>
-                        <h3 className="text-2xl font-display font-black uppercase mt-1">{t('home.exploreHeader', 'Explore Career Pathways Your Way')}</h3>
-                        <p className="text-xs text-stone-500 mt-1">{t('home.exploreSubtitle', 'Choose how you want to discover educational routes and custom timelines.')}</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Option A: Search by Job Name */}
-                        <div 
-                          onClick={() => { setSearchMethod('job'); setJobQuery(''); }}
-                          className="border-2 border-black p-6 bg-white hover:bg-slate-50 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
-                          id="explore-by-job"
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-2 font-bold">
-                              <span className="text-[10px] font-mono font-black tracking-widest text-[#CB5A07] bg-amber-50 border border-amber-200 px-2 py-0.5">DIMENSION 01</span>
-                              <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🔍</span>
-                            </div>
-                            <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">{t('home.searchByJobTitle', 'Search by Job Name?')}</h4>
-                            <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
-                              {t('home.searchByJobDesc', 'Type in your dream role, e.g., Software Engineer, Doctor, or Chartered Accountant to map backwards and find the qualifying courses and progression flowcharts.')}
-                            </p>
-                          </div>
-                          
-                          <div className="mt-6 text-[10px] font-black uppercase text-blue-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-dashed border-stone-150 pt-3">
-                            <span>{t('home.searchByJobBtn', 'Search Jobs & View Plans ➔')}</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </div>
+                    <div className="space-y-6">
+                      <div className="border-2 border-black p-6 bg-slate-50/50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left">
+                        <div className="mb-4">
+                          <span className="text-[10px] font-mono font-black text-blue-700 bg-blue-100 px-2 py-0.5 border border-blue-200 uppercase tracking-widest">{t('home.strategyTag', '// NAVIGATION STRATEGY SELECTION')}</span>
+                          <h3 className="text-2xl font-display font-black uppercase mt-1">{t('home.exploreHeader', 'Explore Career Pathways Your Way')}</h3>
+                          <p className="text-xs text-stone-500 mt-1">{t('home.exploreSubtitle', 'Choose how you want to discover educational routes and custom timelines.')}</p>
                         </div>
 
-                        {/* Option B: Search by Class */}
-                        <div 
-                          onClick={() => { setSearchMethod('class'); }}
-                          className="border-2 border-black p-6 bg-white hover:bg-slate-50 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
-                          id="explore-by-class"
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-mono font-black tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-250 px-2 py-0.5">DIMENSION 02</span>
-                              <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🎓</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Option A: Search by Job Name */}
+                          <div 
+                            onClick={() => { setSearchMethod('job'); setJobQuery(''); }}
+                            className="border-2 border-black p-6 bg-white hover:bg-slate-50 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            id="explore-by-job"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-2 font-bold">
+                                <span className="text-[10px] font-mono font-black tracking-widest text-[#CB5A07] bg-amber-50 border border-amber-200 px-2 py-0.5">DIMENSION 01</span>
+                                <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🔍</span>
+                              </div>
+                              <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">{t('home.searchByJobTitle', 'Search by Job Name?')}</h4>
+                              <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
+                                {t('home.searchByJobDesc', 'Type in your dream role, e.g., Software Engineer, Doctor, or Chartered Accountant to map backwards and find the qualifying courses and progression flowcharts.')}
+                              </p>
                             </div>
-                            <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">{t('home.searchByClassTitle', 'Search by Class?')}</h4>
-                            <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
-                              {t('home.searchByClassDesc', 'Select pathways based on classes. Simply pick whether you completed Class 10th or Class 12th to explore educational maps.')}
-                            </p>
+                            
+                            <div className="mt-6 text-[10px] font-black uppercase text-blue-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-dashed border-stone-150 pt-3">
+                              <span>{t('home.searchByJobBtn', 'Search Jobs & View Plans ➔')}</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </div>
                           </div>
 
-                          <div className="mt-6 text-[10px] font-black uppercase text-emerald-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-dashed border-stone-150 pt-3">
-                            <span>{t('home.searchByClassBtn', 'Choose Grade Standard ➔')}</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
+                          {/* Option B: Search by Class */}
+                          <div 
+                            onClick={() => { setSearchMethod('class'); }}
+                            className="border-2 border-black p-6 bg-white hover:bg-slate-50 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            id="explore-by-class"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] font-mono font-black tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-250 px-2 py-0.5">DIMENSION 02</span>
+                                <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🎓</span>
+                              </div>
+                              <h4 className="text-xl font-display font-black uppercase text-stone-900 mt-2">{t('home.searchByClassTitle', 'Search by Class?')}</h4>
+                              <p className="text-xs text-stone-600 mt-2 leading-relaxed font-semibold">
+                                {t('home.searchByClassDesc', 'Select pathways based on classes. Simply pick whether you completed Class 10th or Class 12th to explore educational maps.')}
+                              </p>
+                            </div>
+
+                            <div className="mt-6 text-[10px] font-black uppercase text-emerald-600 flex items-center justify-between group-hover:translate-x-1 transition-transform border-t border-dashed border-stone-150 pt-3">
+                              <span>{t('home.searchByClassBtn', 'Choose Grade Standard ➔')}</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* MORE OPTIONS... SECTION (HOME PAGE ONLY) */}
+                      <div className="border-2 border-black p-5 md:p-6 bg-slate-50/50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-left space-y-4" id="more-options-hub">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b-2 border-dashed border-stone-300 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono font-black text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 uppercase tracking-wider">
+                              ⚡ MORE OPTIONS
+                            </span>
+                            <h3 className="text-xl font-display font-black uppercase text-stone-900">
+                              More Options...
+                            </h3>
+                          </div>
+                          <span className="text-[10px] font-mono text-stone-500 font-bold hidden sm:inline">
+                            // Direct Shortcuts & Tools
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                          {/* 🤖 Card 1: AI Advisor */}
+                          <div 
+                            onClick={() => { setSelectedNav('ai-advisor'); setCurrentView('ai-advisor'); }}
+                            className="border-2 border-black p-6 bg-white hover:bg-amber-50/40 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            id="quick-access-ai-advisor"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-4">
+                                <span className="text-[10px] font-mono font-black text-amber-800 bg-amber-100 px-2.5 py-0.5 border border-amber-300 uppercase tracking-widest">
+                                  OPTION 01
+                                </span>
+                                <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🤖</span>
+                              </div>
+
+                              <h3 className="text-xl font-display font-black uppercase text-stone-900 tracking-tight">
+                                AI Advisor
+                              </h3>
+
+                              <p className="text-xs text-stone-600 font-medium leading-relaxed mt-2">
+                                Click here to access AI Advisor to get insights from AI, personalized academic roadmaps, and career suggestions.
+                              </p>
+                            </div>
+
+                            <div>
+                              <div className="w-full border-t-2 border-dashed border-blue-400 my-4"></div>
+
+                              <div className="flex items-center justify-between text-xs font-black uppercase text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                                <span className="flex items-center gap-1">
+                                  OPEN AI ADVISOR →
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-blue-600" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 💼 Card 2: Job Info */}
+                          <div 
+                            onClick={() => { setSelectedNav('onet-careers'); setCurrentView('onet-careers'); }}
+                            className="border-2 border-black p-6 bg-white hover:bg-sky-50/40 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            id="quick-access-job-info"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-4">
+                                <span className="text-[10px] font-mono font-black text-sky-800 bg-sky-100 px-2.5 py-0.5 border border-sky-300 uppercase tracking-widest">
+                                  OPTION 02
+                                </span>
+                                <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">💼</span>
+                              </div>
+
+                              <h3 className="text-xl font-display font-black uppercase text-stone-900 tracking-tight">
+                                Job Info
+                              </h3>
+
+                              <p className="text-xs text-stone-600 font-medium leading-relaxed mt-2">
+                                Click here to access Job Info to explore career profiles, salary insights, and market demand for various professions.
+                              </p>
+                            </div>
+
+                            <div>
+                              <div className="w-full border-t-2 border-dashed border-blue-400 my-4"></div>
+
+                              <div className="flex items-center justify-between text-xs font-black uppercase text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                                <span className="flex items-center gap-1">
+                                  OPEN JOB INFO →
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-blue-600" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 🔖 Card 3: Saved Paths */}
+                          <div 
+                            onClick={() => { setSelectedNav('saved'); setCurrentView('saved'); }}
+                            className="border-2 border-black p-6 bg-white hover:bg-emerald-50/40 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            id="quick-access-saved-paths"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-4">
+                                <span className="text-[10px] font-mono font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 border border-emerald-300 uppercase tracking-widest">
+                                  OPTION 03
+                                </span>
+                                <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">🔖</span>
+                              </div>
+
+                              <h3 className="text-xl font-display font-black uppercase text-stone-900 tracking-tight">
+                                Saved Paths
+                              </h3>
+
+                              <p className="text-xs text-stone-600 font-medium leading-relaxed mt-2">
+                                Click here to access Saved Paths to view your bookmarked course roadmaps, saved pathways, and custom timelines.
+                              </p>
+                            </div>
+
+                            <div>
+                              <div className="w-full border-t-2 border-dashed border-blue-400 my-4"></div>
+
+                              <div className="flex items-center justify-between text-xs font-black uppercase text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                                <span className="flex items-center gap-1">
+                                  OPEN SAVED PATHS →
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-blue-600" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 📝 Card 4: Entrance Exams Info */}
+                          <div 
+                            onClick={() => { setSelectedNav('entrance-exams'); setCurrentView('entrance-exams'); }}
+                            className="border-2 border-black p-6 bg-white hover:bg-purple-50/40 transition-all cursor-pointer relative group flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+                            id="quick-access-entrance-exams-info"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start mb-4">
+                                <span className="text-[10px] font-mono font-black text-purple-800 bg-purple-100 px-2.5 py-0.5 border border-purple-300 uppercase tracking-widest">
+                                  OPTION 04
+                                </span>
+                                <span className="text-3xl opacity-20 filter grayscale group-hover:grayscale-0 transition-all">📝</span>
+                              </div>
+
+                              <h3 className="text-xl font-display font-black uppercase text-stone-900 tracking-tight">
+                                Entrance Exams Info
+                              </h3>
+
+                              <p className="text-xs text-stone-600 font-medium leading-relaxed mt-2">
+                                Click here to explore complete details, syllabus, expected dates, fees, required documents, career options, alumni reviews.
+                              </p>
+                            </div>
+
+                            <div>
+                              <div className="w-full border-t-2 border-dashed border-purple-400 my-4"></div>
+
+                              <div className="flex items-center justify-between text-xs font-black uppercase text-purple-600 group-hover:translate-x-0.5 transition-transform">
+                                <span className="flex items-center gap-1">
+                                  OPEN EXAMS INFO →
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-purple-600" />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -8129,6 +8297,8 @@ export default function App() {
                       </div>
                     </div>
                   )}
+
+
 
                   {/* OPTION A SUB-SCREEN: 100% REVERSE-SEARCH BY JOB NAME (WITH BACK BUTTON AND INPUT) */}
                   {searchMethod === 'job' && (
@@ -9728,8 +9898,8 @@ export default function App() {
           )}
         </div>
 
-            {/* Right Sidebar - 1 Column */}
-            {!isComparing && (
+            {/* Right Sidebar - 1 Column (HOME PAGE ONLY) */}
+            {!isComparing && searchMethod === 'none' && (
               <div className="space-y-8">
 
               {/* COMPLEMENTARY ROADMAP DUAL-PATH COMPARER */}
@@ -11043,6 +11213,13 @@ export default function App() {
         {/* 4. SAVED PATHS BOARD VIEW */}
         {user && currentView === 'saved' && (
           <div className="max-w-7xl mx-auto px-6 py-10">
+            <button 
+              onClick={() => { setCurrentView('dashboard'); setSelectedNav('home'); }}
+              className="px-3.5 py-2 border-2 border-black text-xs font-black uppercase bg-white hover:bg-stone-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none flex items-center gap-1 cursor-pointer text-black mb-6"
+              id="back-to-home-saved-paths"
+            >
+              ← Back to Home
+            </button>
             <div className="border-2 border-black bg-white p-8 mb-10 shadow-[6px_6px_0px_0px_#000]">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">// Bookmarked Collections</span>
               <h1 className="text-4xl font-display font-black uppercase tracking-tight mt-1 mb-2">
@@ -11161,7 +11338,41 @@ export default function App() {
 
         {/* 5. MESSAGING SYSTEM / MENTOR CHAT WINDOW */}
         {user && currentView === 'messages' && (
-          <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-6 h-[650px] flex flex-col md:flex-row border-2 border-black bg-white shadow-[8px_8px_0px_0px_#000] overflow-hidden">
+          <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-6 flex flex-col gap-4">
+            {/* Top Bar with Back to Home Button */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_#000]">
+              <div className="flex items-center gap-3">
+                <button 
+                  type="button"
+                  onClick={() => { setCurrentView('dashboard'); setSelectedNav('home'); }}
+                  className="px-3.5 py-2 border-2 border-black text-xs font-black uppercase bg-amber-200 hover:bg-amber-300 hover:translate-x-0.5 hover:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none flex items-center gap-1.5 cursor-pointer text-black"
+                  id="messages-back-to-home"
+                >
+                  ← Back to Home
+                </button>
+                <div>
+                  <h3 className="text-sm md:text-base font-display font-black uppercase text-stone-900 tracking-tight flex items-center gap-2">
+                    <span>💬</span> Mentorship Messages & Inbox
+                  </h3>
+                  <p className="text-[10px] text-stone-500 font-mono font-medium hidden sm:block">
+                    Direct live messages with alumni, counselors, and peer mentors
+                  </p>
+                </div>
+              </div>
+
+              {activeThreadId && (
+                <button
+                  type="button"
+                  onClick={() => setActiveThreadId(null)}
+                  className="px-3 py-1.5 border-2 border-black text-[11px] font-black uppercase bg-stone-100 hover:bg-stone-200 cursor-pointer shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5"
+                  title="Return to inbox channel list"
+                >
+                  📋 View Inbox Channels
+                </button>
+              )}
+            </div>
+
+            <div className="h-[650px] flex flex-col md:flex-row border-2 border-black bg-white shadow-[8px_8px_0px_0px_#000] overflow-hidden">
             
             {/* Sidebar Threads list */}
             <div className={`w-full md:w-80 border-black md:border-r-2 flex flex-col h-full ${activeThreadId ? 'hidden md:flex' : 'flex'}`}>
@@ -11421,11 +11632,19 @@ export default function App() {
             </div>
 
           </div>
+        </div>
         )}
 
         {/* AI ADVISOR FULL PAGE PANEL */}
         {user && currentView === 'ai-advisor' && (
           <div className="max-w-7xl mx-auto px-6 py-10">
+            <button 
+              onClick={() => { setCurrentView('dashboard'); setSelectedNav('home'); }}
+              className="px-3.5 py-2 border-2 border-black text-xs font-black uppercase bg-white hover:bg-stone-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none flex items-center gap-1 cursor-pointer text-black mb-6"
+              id="back-to-home-ai-advisor"
+            >
+              ← Back to Home
+            </button>
             <div className="border-2 border-black bg-white p-6 md:p-8 shadow-[6px_6px_0px_0px_#000] mb-8">
               
               <h2 className="text-3xl font-display text-blue-600 font-black uppercase mt-1">DIRPA AI Advisor</h2>
@@ -11697,9 +11916,27 @@ export default function App() {
           </div>
         )}
 
+        {/* ENTRANCE EXAMS INFO VIEW */}
+        {user && currentView === 'entrance-exams' && (
+          <EntranceExamsInfo 
+            user={user}
+            onStartChat={startMentorshipChat}
+            onBackToHome={() => { setCurrentView('dashboard'); setSelectedNav('home'); }}
+            registeredUsers={registeredUsers}
+            dynamicPathways={dynamicPathways}
+          />
+        )}
+
         {/* O*NET CAREER EXPLORER VIEW */}
         {user && currentView === 'onet-careers' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <button 
+              onClick={() => { setCurrentView('dashboard'); setSelectedNav('home'); }}
+              className="px-3.5 py-2 border-2 border-black text-xs font-black uppercase bg-white hover:bg-stone-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none flex items-center gap-1 cursor-pointer text-black mb-6"
+              id="back-to-home-job-info"
+            >
+              ← Back to Home
+            </button>
             <OnetCareerExplorer />
           </div>
         )}
@@ -11714,7 +11951,7 @@ export default function App() {
                   <div 
                     onClick={() => setShowPhotoModal(true)}
                     className="relative w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden group cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:scale-105 active:scale-95 transition-all select-none"
-                    title="Click to change photo or choose custom illustration"
+                    title="Click to change profile photo"
                     id="profile-picture-container-interactive"
                   >
                     <AvatarDisplay 
@@ -13494,7 +13731,7 @@ export default function App() {
           <div className="bg-white border-2 border-black w-full max-w-sm rounded-xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <div className="p-6 text-center border-b border-black bg-amber-50">
               <h3 className="text-lg font-display font-black uppercase text-black">Change Profile Photo</h3>
-              <p className="text-xs text-gray-600 mt-1">Select an avatar source or choose from 24 custom illustrations.</p>
+              <p className="text-xs text-gray-600 mt-1">Select an image from gallery, take a photo with camera, or remove photo.</p>
             </div>
             
             <div className="flex flex-col font-sans">
@@ -13524,21 +13761,10 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setShowPhotoModal(false);
-                  setShowIllustrationsModal(true);
-                }}
-                className="py-3.5 px-4 text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-100 hover:bg-amber-200 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
-              >
-                🎨 Select custom illustrations
-              </button>
-
-              <button
-                type="button"
                 onClick={handleRemovePhoto}
-                className="py-3 px-4 text-xs font-bold text-red-600 hover:bg-red-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
+                className="py-3.5 px-4 text-xs font-bold text-red-600 hover:bg-red-50 border-b border-black transition-colors focus:outline-none cursor-pointer text-center flex items-center justify-center gap-2"
               >
-                🗑️ Remove photo / reset
+                🗑️ Remove photo
               </button>
 
               <button
@@ -13559,16 +13785,6 @@ export default function App() {
         onClose={() => setShowCameraModal(false)}
         onCapture={(dataUrl) => {
           handleUpdateAvatarDirectly(dataUrl);
-        }}
-      />
-
-      {/* Custom Illustration Selector Pop-up Modal */}
-      <IllustrationSelector
-        isOpen={showIllustrationsModal}
-        onClose={() => setShowIllustrationsModal(false)}
-        currentAvatar={user?.avatar || ''}
-        onSelectAvatar={(selectedAvatarIdOrUrl) => {
-          handleUpdateAvatarDirectly(selectedAvatarIdOrUrl);
         }}
       />
 
@@ -13815,9 +14031,9 @@ export default function App() {
                             <span>⭐ {(fb.overallRating || fb.rating || 5).toFixed(1)} / 5</span>
                           </div>
                         </div>
-                        <p className="text-xs text-stone-800 leading-relaxed italic border-t border-dashed border-stone-300 pt-2 font-medium">
-                          "{fb.feedbackText || fb.experience}"
-                        </p>
+                        <div className="border-t border-dashed border-stone-300 pt-2">
+                          <TranslatableText text={fb.feedbackText || fb.experience || ""} className="text-xs text-stone-800 leading-relaxed italic font-medium" />
+                        </div>
                         {fb.advice && (
                           <p className="text-[11px] font-bold text-amber-950 bg-amber-200/80 p-2.5 border border-amber-400">
                             💡 Pro Tip: {fb.advice}
@@ -14070,9 +14286,9 @@ export default function App() {
                               ★ Rating: {(f.overallRating || f.rating || 5).toFixed(1)} / 5.0
                             </span>
                           </div>
-                          <p className="text-neutral-700 leading-relaxed pt-2 border-t border-dashed border-stone-200 font-medium italic">
-                            "{f.feedbackText || f.experience}"
-                          </p>
+                          <div className="pt-2 border-t border-dashed border-stone-200">
+                            <TranslatableText text={f.feedbackText || f.experience || ""} className="text-neutral-700 leading-relaxed font-medium italic" />
+                          </div>
                         </div>
                       </div>
                     ))}

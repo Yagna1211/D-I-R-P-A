@@ -68,8 +68,19 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    const width = video.videoWidth || 400;
-    const height = video.videoHeight || 400;
+    const maxDim = 256;
+    let width = video.videoWidth || 400;
+    let height = video.videoHeight || 400;
+
+    if (width > maxDim || height > maxDim) {
+      if (width > height) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      }
+    }
 
     canvas.width = width;
     canvas.height = height;
@@ -82,7 +93,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         ctx.scale(-1, 1);
       }
       ctx.drawImage(video, 0, 0, width, height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setCapturedData(dataUrl);
     }
   };

@@ -36,7 +36,7 @@ interface OnetStatus {
 }
 
 export const OnetCareerExplorer: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>('software');
   const [loading, setLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<OnetStatus | null>(null);
@@ -117,7 +117,7 @@ export const OnetCareerExplorer: React.FC = () => {
     if (activeRegion === 'IN') {
       // Route query through Gemini Live Search Grounding Service
       try {
-        const result = await fetchIndianJobData(query);
+        const result = await fetchIndianJobData(query, i18n.language);
         setApiSource(result.source || 'gemini_live_search');
         if (result.citations) {
           setCitations(result.citations);

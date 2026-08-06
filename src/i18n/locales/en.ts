@@ -248,6 +248,100 @@ export const en = {
     signUpBtn: "Create Account",
     switchSignUp: "Don't have an account? Sign Up",
     switchSignIn: "Already have an account? Sign In",
+  },
+  pathways: {
+    mpc: {
+      name: "Intermediate MPC (Maths, Physics, Chemistry)",
+      duration: "2 Years",
+      eligibility: "Finished 10th Standard with Mathematics & Science focus",
+      description: "MPC is the gateway stream for engineering, technology, computer applications, architecture, physics, defense, and quantitative sciences. It builds core problem-solving and mathematical reasoning.",
+      category: "Science"
+    },
+    bipc: {
+      name: "Intermediate BiPC (Biology, Physics, Chemistry)",
+      duration: "2 Years",
+      eligibility: "Finished 10th Standard with Biology/Science focus",
+      description: "BiPC is the gateway path for medical, healthcare, veterinary, agricultural, and biological sciences. This stream opens up highly impactful careers dedicated to human anatomy, pharmaceuticals, research, and ecology.",
+      category: "Science"
+    },
+    mec: {
+      name: "Intermediate MEC (Maths, Economics, Commerce)",
+      duration: "2 Years",
+      eligibility: "Finished 10th Standard from any recognized board",
+      description: "MEC combines quantitative mathematical rigor with business commerce and economics. It prepares students for high-level finance, actuarial science, analytics, chartered accountancy, and tech-commerce.",
+      category: "Commerce"
+    },
+    cec: {
+      name: "Intermediate CEC (Civics, Economics, Commerce)",
+      duration: "2 Years",
+      eligibility: "Passed 10th Class from any board",
+      description: "CEC is ideal for students intrigued by business operations, finance management, taxation, national economics, and local governance.",
+      category: "Commerce"
+    },
+    hec: {
+      name: "Intermediate HEC (History, Economics, Civics)",
+      duration: "2 Years",
+      eligibility: "Passed 10th Class",
+      description: "HEC focuses on social sciences, political administration, history, law, public relations, and humanities.",
+      category: "Humanities"
+    },
+    polytechnic: {
+      name: "Polytechnic Engineering Diploma",
+      duration: "3 Years",
+      eligibility: "Passed 10th Class (qualifying POLYCET)",
+      description: "A structural hands-on technical pathway. Students learn real-world engineering skills in workshops rather than dry board exams.",
+      category: "Vocational"
+    },
+    iti: {
+      name: "ITI Vocational & Technical Trades",
+      duration: "1 - 2 Years",
+      eligibility: "Passed 10th Class (or 8th for specific trades)",
+      description: "Direct job-oriented technical trade certification under NCVT/SCVT.",
+      category: "Vocational"
+    },
+    btech_cs: {
+      name: "B.Tech Computer Science & Engineering (CSE)",
+      duration: "4 Years",
+      eligibility: "Finished 12th with Maths, Physics, Chemistry (MPC) / Diploma lateral",
+      description: "The premier technical undergraduate degree globally. CS Engineering teaches software design, algorithms, artificial intelligence, and cloud scaling.",
+      category: "Engineering"
+    },
+    mbbs: {
+      name: "MBBS (Bachelor of Medicine & Bachelor of Surgery)",
+      duration: "5.5 Years (including 1 year internship)",
+      eligibility: "Finished 12th BiPC (NEET-UG qualification required)",
+      description: "The foundational clinical qualification required to practice medicine and surgery in India and globally.",
+      category: "Medical"
+    },
+    bcom: {
+      name: "B.Com (Bachelor of Commerce / Honours)",
+      duration: "3 - 4 Years",
+      eligibility: "Finished 12th Commerce (CEC/MEC) or Science",
+      description: "Comprehensive financial degree focusing on auditing, corporate law, corporate finance, taxation, and accounting.",
+      category: "Commerce"
+    },
+    bba: {
+      name: "BBA (Bachelor of Business Administration)",
+      duration: "3 - 4 Years",
+      eligibility: "Finished 12th from any stream",
+      description: "Core management education covering business operations, marketing, human resources, supply chain, and entrepreneurship.",
+      category: "Management"
+    }
+  },
+  forumActions: {
+    translatePost: "Translate post",
+    translating: "Translating...",
+    showOriginal: "Show original text",
+    translatedTo: "Translated to",
+    postedBy: "Posted by",
+    publishedOn: "Published on",
+    reply: "Reply",
+    replies: "Replies",
+    like: "Like",
+    likes: "Likes",
+    noCommentsYet: "No comments posted yet for this pathway.",
+    beFirst: "Be the first to share your experience!",
+    shareThought: "Share your experience or ask a question..."
   }
 };
 

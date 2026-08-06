@@ -950,7 +950,16 @@ async function startServer() {
   // AI Recommendation endpoint using GoogleGenAI SDK
   app.post("/api/recommend", async (req, res) => {
     try {
-      const { level, interests, strengths, budget, durationPref, careerGoal } = req.body;
+      const { level, interests, strengths, budget, durationPref, careerGoal, lang, i18nextLng } = req.body;
+      const activeLang = (lang || i18nextLng || 'en').toLowerCase();
+
+      const langMap: Record<string, string> = {
+        te: "Telugu (తెలుగు)",
+        hi: "Hindi (हिन्दी)",
+        ta: "Tamil (தமிழ்)",
+        en: "English"
+      };
+      const targetLangName = langMap[activeLang] || "English";
 
       if (!level || !interests || !strengths || !careerGoal) {
         return res.status(400).json({ error: "Missing required fields in recommendation request" });
@@ -969,20 +978,24 @@ async function startServer() {
       Maximum/desired duration: ${durationPref}
       Career goal or position: ${careerGoal}
 
+      CRITICAL LANGUAGE REQUIREMENT:
+      The student's selected language is ${targetLangName} (Language code: ${activeLang}).
+      You MUST generate 100% of ALL JSON text content, course names, descriptions, whyFits, syllabus titles/topics, learning outcomes, feedback author details, feedback text, job titles, full overview, responsibilities, required skills, salary ranges, growth scope, top recruiters, and general advice strictly in ${targetLangName}! Do NOT output English unless the language code is 'en'.
+
       Recommend 2 highly suitable educational routes and 2 alternative pathways.
       For EVERY course pathway, provide genuine, highly realistic data including:
-      1. Course Name & Overview.
-      2. Comprehensive Syllabus (semester/year modules with specific topics and learning outcomes).
-      3. Authentic Alumni & Mentor Feedback (author name, role/graduation year, 1-5 rating, review text, advice).
-      4. Potential Job Roles with FULL, realistic descriptions (Job title, short description, full overview, responsibilities, required skills, salary range for entry/mid/senior levels, growth scope, top recruiters, certifications).
+      1. Course Name & Overview (in ${targetLangName}).
+      2. Comprehensive Syllabus (semester/year modules with specific topics and learning outcomes in ${targetLangName}).
+      3. Authentic Alumni & Mentor Feedback (author name, role/graduation year, 1-5 rating, review text, advice in ${targetLangName}).
+      4. Potential Job Roles with FULL, realistic descriptions in ${targetLangName} (Job title, short description, full overview, responsibilities, required skills, salary range for entry/mid/senior levels, growth scope, top recruiters, certifications).
 
       Ensure suggestions reside in JSON output matching the requested schema. Make data realistic for Indian and international academic/industry standards.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert educational counselor with deep knowledge of academic pathways, diplomas, syllabus structures, alumni experiences, and real-world career job descriptions.",
+          systemInstruction: `You are an expert educational counselor with deep knowledge of academic pathways, diplomas, syllabus structures, alumni experiences, and real-world career job descriptions. Always output all content strictly in ${targetLangName}.`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -1143,8 +1156,11 @@ async function startServer() {
   // Dedicated dynamic internet course explorer endpoint utilizing Google Search Grounding with Gemini AI
   app.post("/api/search-courses-web", async (req, res) => {
     try {
-      const { userQuery } = req.body;
+      const { userQuery, lang, i18nextLng } = req.body;
       const searchQuery = userQuery || "What are all the courses available after the 12th class and why do schools only emphasize a few?";
+      const activeLang = (lang || i18nextLng || 'en').toLowerCase();
+      const langNames: Record<string, string> = { te: "Telugu", hi: "Hindi", ta: "Tamil", en: "English" };
+      const targetLangName = langNames[activeLang] || "English";
 
       if (!ai) {
         // High quality mock search response covering extensive real courses after 12th
@@ -1201,6 +1217,10 @@ Historically, traditional educational systems, parents, and schools emphasize a 
       const prompt = `You are the DIRPA Professional Academic Advisor. Deeply address the student's query or general question using live web references with Google Search:
       Query: "${searchQuery}"
       
+      CRITICAL LANGUAGE REQUIREMENT:
+      The student's selected language is ${targetLangName} (Language code: ${activeLang}).
+      You MUST write 100% of your explanation, list of courses, entrance exams, and advice strictly in ${targetLangName}! Do NOT write in English unless the language code is 'en'.
+
       Provide:
       1. A thorough explanation of why schools/parents typically promote only a tiny handful of options (the traditional tunnel vision of Engineering and Medicine) after 12th class, and debunk it.
       2. An exhaustive list of ALL major academic options, professional degrees, creative streams, vocational diplomas, and high-growth emerging pathways available after class 12 (including core entrance exams like JEE, NEET, CLAT, NID, NATA, NDA, etc.).
@@ -1209,10 +1229,10 @@ Historically, traditional educational systems, parents, and schools emphasize a 
       Keep the formatting incredibly clean and highly legible using professional Markdown headings, lists, and bold accent lines.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
-          systemInstruction: "You are a career counseling assistant. Always search the internet to present real, modern, accurate, and comprehensive courses and exams.",
+          systemInstruction: `You are a career counseling assistant. Always search the internet to present real, modern, accurate, and comprehensive courses and exams. Always write strictly in ${targetLangName}.`,
           tools: [{ googleSearch: {} }]
         }
       });
@@ -1508,7 +1528,7 @@ CRITICAL RULES:
 - Output MUST be valid pure JSON. Do NOT include markdown codeblocks or conversational text around the JSON object.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           systemInstruction: "You are an expert Indian job market analyst. Always ground queries with live Google Search data for Indian salaries, skills, NCO codes, and qualifications.",
@@ -1563,6 +1583,407 @@ CRITICAL RULES:
           { title: "Ministry of Labour & Employment India", url: "https://labour.gov.in" }
         ]
       });
+    }
+  });
+
+  // Helper to generate smart fallback entrance exam reports when AI rate limits occur
+  function generateSmartExamFallbackReport(query: string, targetLangName: string): string {
+    const q = query.toLowerCase().trim();
+    
+    // 1. AP / TS EAPCET / EAMCET (Engineering, Agriculture and Pharmacy Common Entrance Test)
+    if (q.includes("eapcet") || q.includes("eamcet") || q.includes("eapset") || q.includes("ap eapcet") || q.includes("ts eapcet")) {
+      const isAP = q.includes("ap");
+      const isTS = q.includes("ts");
+      const stateName = isAP ? "Andhra Pradesh" : isTS ? "Telangana" : "Andhra Pradesh & Telangana";
+      const conducting = isAP ? "JNTU Kakinada on behalf of APSCHE" : isTS ? "JNTU Hyderabad on behalf of TSCHE" : "APSCHE / TSCHE (JNTUK & JNTUH)";
+      const portalUrl = isAP ? "https://cets.apsche.ap.gov.in" : "https://eapcet.tsche.ac.in";
+      const feeGen = isAP ? "₹600 (Engineering) / ₹1,200 (Both E & A)" : "₹900 (Engineering) / ₹1,800 (Both E & A)";
+      const feeRes = isAP ? "₹500 (SC/ST) / ₹550 (BC)" : "₹500 (SC/ST/PH)";
+
+      return `### 📌 Exam Overview: ${query.toUpperCase()} 2026 (Engineering, Agriculture & Pharmacy Common Entrance Test)
+- **State / Territory**: ${stateName} State Level Entrance Examination
+- **Conducting Body**: ${conducting}
+- **Exam Mode**: Computer Based Test (CBT) across multiple exam sessions
+- **Frequency**: Once a year (May)
+- **Duration**: 3 Hours (180 minutes)
+
+### 📝 Structure & Marking Scheme
+- **Test Pattern**: 160 Multiple Choice Questions (MCQs).
+- **MPC Stream (Engineering)**: Mathematics (80 Qs), Physics (40 Qs), Chemistry (40 Qs).
+- **BiPC Stream (Agriculture & Pharmacy)**: Botany (40 Qs), Zoology (40 Qs), Physics (40 Qs), Chemistry (40 Qs).
+- **Marking Scheme**: +1 mark for every correct answer. **NO NEGATIVE MARKING!** Total 160 Marks.
+
+### 🎓 Eligibility Criteria & Syllabus
+- **Eligibility**: Passed or appearing in Intermediate / Class 12 (10+2) with Physics, Mathematics/Biology, and Chemistry. Local/Domicile requirement for AP/TS. Minimum 45% aggregate (40% for reserved categories).
+- **Syllabus**: Intermediate 1st & 2nd Year State Board Syllabus (Class 11 & 12 equivalent).
+
+### 📅 Expected Dates 2026 & Application Fees
+- **Registration Window**: March 2026 - April 2026 (without late fee)
+- **Exam Dates**: May 9 - May 20, 2026
+- **Results & Ranks**: June 2026 | **Web Counseling**: July 2026
+- **Application Fees**: General/OBC: ${feeGen} | SC/ST Reserved: ${feeRes}
+
+### 📁 Application Process & Required Documents
+1. Access official state portal [${portalUrl}](${portalUrl}) and pay registration fee.
+2. Enter Intermediate 12th Hall Ticket number, personal credentials, category details, and stream choice.
+3. Upload passport photograph and candidate signature scan.
+4. Select 3 preferred test city centers.
+5. Documents Required: 10th SSC Marksheet, 12th Hall Ticket, Local Domicile Certificate, Meeseva/ePASS Income Certificate (for Full State Fee Reimbursement), Caste Certificate, Aadhaar Card.
+
+### 🚀 Courses Unlocked & Top Colleges
+- **Courses**: B.Tech / B.E. (Computer Science, AI & ML, Data Science, ECE, EEE, Mechanical, Civil, IT), B.Pharm, Pharm.D, B.Sc Agriculture (Hons), B.Sc Horticulture, B.V.Sc (Veterinary).
+- **Top Colleges**: 
+  - **AP**: Andhra University (AU Visakhapatnam), JNTU Kakinada (JNTUK), JNTU Anantapur, SVU Tirupati, Gayatri Vidya Parishad (GVP), RVR & JC Guntur, VR Siddhartha Vijayawada.
+  - **Telangana**: JNTU Hyderabad (JNTUH), Osmania University (OU), Chaitanya Bharathi Institute of Technology (CBIT), Vasavi College of Engineering, VNR VJIET, BVRIT Hyderabad, GRIET.
+
+### 💡 Preparation & Alumni Advice
+- **Attempt All 160 Questions**: Because there is **NO negative marking**, never leave any question unattempted!
+- **Math Weightage**: Mathematics carries 50% total marks (80 out of 160). Focus heavily on Coordinate Geometry, Matrices, Integration, and Vectors.
+
+### 🔗 Official Links
+- [Official State EAPCET Portal](${portalUrl})
+- [State Council of Higher Education Hub](https://www.education.gov.in)`;
+    }
+
+    // 2. JEE Main
+    if (q.includes("jee") || q.includes("joint entrance")) {
+      return `### 📌 Exam Overview: JEE Main 2026 (Joint Entrance Examination)
+- **Conducting Body**: National Testing Agency (NTA)
+- **Exam Mode**: Computer Based Test (CBT)
+- **Frequency**: Twice a year (Session 1 in Jan & Session 2 in April)
+- **Duration**: 3 Hours (180 minutes)
+
+### 📝 Structure & Marking Scheme
+- **Paper 1 (B.E./B.Tech)**: Physics (30 Qs), Chemistry (30 Qs), Mathematics (30 Qs). Total 90 questions (Attempt 75).
+- **Marking Scheme**: +4 for correct answer, -1 for incorrect answer. Total 300 Marks.
+
+### 🎓 Eligibility Criteria & Syllabus
+- **Eligibility**: Class 12 passed or appearing with Physics, Mathematics, and Chemistry. No age limit. Maximum 3 consecutive years of attempts.
+- **Syllabus**: Class 11 & 12 NCERT Physics, Chemistry, and Mathematics.
+
+### 📅 Expected Dates 2026 & Fees
+- **Session 1 Registration**: Nov - Dec 2025 | **Session 1 Exam**: Jan 22 - Jan 31, 2026
+- **Session 2 Registration**: Feb 2026 | **Session 2 Exam**: April 1 - April 15, 2026
+- **Fees**: Male (Gen/OBC): ₹1,000 | Female: ₹800 | SC/ST/PwD: ₹500
+
+### 📁 Application Process & Required Documents
+1. Visit [jeemain.nta.nic.in](https://jeemain.nta.nic.in) and register via Aadhaar/Digilocker.
+2. Documents Required: Passport Photo (white background), Signature, Class 10/12 Marksheet, Category/PwD Certificate, Aadhaar ID.
+
+### 🚀 Courses Unlocked & Top Colleges
+- **Courses**: B.Tech / B.E., B.Arch, B.Planning, Dual B.Tech+M.Tech.
+- **Top Colleges**: 31 NITs (Trichy, Surathkal, Warangal), 26 IIITs, 38 GFTIs, and qualification for JEE Advanced (23 IITs).
+
+### 💡 Preparation & Alumni Advice
+- Prioritize NCERT Chemistry (especially Inorganic). Solve 10 years of NTA past papers under strict 3-hour timers.
+
+### 🔗 Official Links
+- [NTA JEE Main Official Website](https://jeemain.nta.nic.in)
+- [NTA Main Portal](https://nta.ac.in)`;
+    }
+
+    // 3. NEET UG
+    if (q.includes("neet") || q.includes("medical")) {
+      return `### 📌 Exam Overview: NEET UG 2026 (National Eligibility cum Entrance Test)
+- **Conducting Body**: National Testing Agency (NTA)
+- **Exam Mode**: Offline Pen-and-Paper (OMR Sheet)
+- **Frequency**: Once a year (First Sunday of May)
+- **Duration**: 3 Hours 20 Minutes (200 minutes)
+
+### 📝 Structure & Marking Scheme
+- **Subjects**: Physics (45 Qs), Chemistry (45 Qs), Biology - Botany (45 Qs) & Zoology (45 Qs). Total 180 questions to attempt out of 200.
+- **Marking**: +4 for correct, -1 for incorrect. Maximum 720 Marks.
+
+### 🎓 Eligibility Criteria & Syllabus
+- **Eligibility**: Class 12 with Physics, Chemistry, Biology/Biotechnology. Min 50% for Gen (40% SC/ST/OBC). Age 17+ by Dec 31.
+- **Syllabus**: Class 11 & 12 NCERT Biology, Physics, and Chemistry.
+
+### 📅 Expected Dates 2026 & Fees
+- **Registration**: Feb - March 2026 | **Exam Date**: May 3, 2026 | **Results**: June 2026
+- **Fees**: Gen: ₹1,700 | OBC/EWS: ₹1,600 | SC/ST/PwD: ₹1,000
+
+### 📁 Application Process & Required Documents
+1. Visit [neet.nta.nic.in](https://neet.nta.nic.in).
+2. Documents Required: Passport & Postcard size photos, Finger & Thumb impressions, Signature, Class 10 certificate, Category certificate, Aadhaar card.
+
+### 🚀 Courses Unlocked & Top Colleges
+- **Courses**: MBBS, BDS, BAMS, BHMS, BUMS, B.Sc Nursing, BVSc.
+- **Top Colleges**: AIIMS New Delhi & 19 AIIMS institutes, JIPMER, KGMU, MMC Chennai, and all Govt/Private Medical Colleges.
+
+### 💡 Preparation & Alumni Advice
+- Biology NCERT is mandatory—memorize every diagram, table, and line caption. Aim for 340+ in Biology!
+
+### 🔗 Official Links
+- [NTA NEET Official Website](https://neet.nta.nic.in)
+- [MCC Counselling Portal](https://mcc.nic.in)`;
+    }
+
+    // 4. CAT MBA
+    if (q.includes("cat") || q.includes("common admission test") || q.includes("mba")) {
+      return `### 📌 Exam Overview: CAT 2026 (Common Admission Test)
+- **Conducting Body**: IIMs (On rotation)
+- **Exam Mode**: Computer Based Test (CBT)
+- **Frequency**: Once a year (Last Sunday of November)
+- **Duration**: 2 Hours (40 minutes per section)
+
+### 📝 Structure & Marking Scheme
+- **Sections**: VARC (24 Qs), DILR (20 Qs), QA (22 Qs). Total 66 questions (198 Marks).
+- **Marking**: +3 for correct, -1 for incorrect MCQs (No negative mark for Non-MCQ TIPA questions).
+
+### 🎓 Eligibility Criteria & Syllabus
+- **Eligibility**: Bachelor's degree with minimum 50% aggregate (45% for SC/ST/PwD). Final year UG students eligible.
+- **Syllabus**: Data Interpretation, Logical Reasoning, Quantitative Aptitude, Reading Comprehension & Verbal Ability.
+
+### 📅 Expected Dates 2026 & Fees
+- **Registration**: Aug - Sept 2026 | **Exam Date**: Nov 29, 2026 | **Results**: Jan 2027
+- **Fees**: General/OBC: ₹2,500 | SC/ST/PwD: ₹1,250
+
+### 📁 Application Process & Required Documents
+1. Register at [iimcat.ac.in](https://iimcat.ac.in).
+2. Documents Required: Passport photo, Signature, 10th/12th/UG marksheets, Work ex certificates, Category certificates.
+
+### 🚀 Courses Unlocked & Top Colleges
+- **Courses**: MBA, PGDM, Executive MBA, Ph.D. in Management.
+- **Top Colleges**: 21 IIMs (Ahmedabad, Bangalore, Calcutta, Lucknow), FMS Delhi, SPJIMR, MDI Gurgaon, IIT B-Schools.
+
+### 💡 Preparation & Alumni Advice
+- Practice DILR caselets daily. Selection of right sets in DILR and QA makes the difference between 90 percentile and 99 percentile.
+
+### 🔗 Official Links
+- [CAT Official Portal](https://iimcat.ac.in)`;
+    }
+
+    // 5. KCET (Karnataka CET)
+    if (q.includes("kcet") || q.includes("karnataka")) {
+      return `### 📌 Exam Overview: KCET 2026 (Karnataka Common Entrance Test)
+- **Conducting Body**: Karnataka Examinations Authority (KEA)
+- **Exam Mode**: Offline Pen-and-Paper (OMR Sheet)
+- **Frequency**: Once a year (April / May)
+- **Duration**: 80 Minutes per subject paper
+
+### 📝 Structure & Marking Scheme
+- **Subjects**: Physics (60 Qs), Chemistry (60 Qs), Mathematics (60 Qs), Biology (60 Qs).
+- **Marking Scheme**: +1 mark per correct answer. **NO NEGATIVE MARKING!** Total 180 Marks (PCM/PCB).
+
+### 🎓 Eligibility Criteria & Syllabus
+- **Eligibility**: Passed 2nd PUC / Class 12 with Physics, Chemistry, and Mathematics/Biology with Karnataka Domicile (7 years study in KA).
+- **Syllabus**: 1st & 2nd PUC Karnataka State Board Syllabus.
+
+### 📅 Expected Dates 2026 & Fees
+- **Registration**: Jan - Feb 2026 | **Exam Date**: April 18 - April 20, 2026
+- **Fees**: GM/OBC: ₹500 | SC/ST: ₹250
+
+### 🚀 Courses Unlocked & Top Colleges
+- **Courses**: B.Tech / B.E., B.Pharm, B.Sc Agriculture, BVSc & AH.
+- **Top Colleges**: RVCE Bengaluru, BMSCE Bengaluru, MSRIT Bengaluru, PES University, UVCE.
+
+### 🔗 Official Links
+- [KEA Official KCET Portal](https://cetonline.karnataka.gov.in/kea)`;
+    }
+
+    // 6. MHT CET (Maharashtra CET)
+    if (q.includes("mht") || q.includes("maharashtra")) {
+      return `### 📌 Exam Overview: MHT-CET 2026 (Maharashtra Common Entrance Test)
+- **Conducting Body**: State CET Cell, Maharashtra
+- **Exam Mode**: Computer Based Test (CBT)
+- **Frequency**: Once a year (April - May)
+- **Duration**: 3 Hours (90 mins PCM / 90 mins PCB)
+
+### 📝 Structure & Marking Scheme
+- **PCM Group**: Mathematics (50 Qs, 2 marks each = 100 Marks), Physics (50 Qs, 1 mark = 50), Chemistry (50 Qs, 1 mark = 50). Total 200 Marks.
+- **Marking Scheme**: **NO NEGATIVE MARKING!**
+
+### 🎓 Eligibility Criteria & Syllabus
+- **Eligibility**: Class 12 passed with Physics, Chemistry, Mathematics/Biology. Domicile in Maharashtra. Min 45% aggregate (40% reserved).
+- **Syllabus**: 20% Class 11 + 80% Class 12 Maharashtra State Board syllabus.
+
+### 🚀 Courses Unlocked & Top Colleges
+- **Courses**: B.E. / B.Tech, B.Pharm, Pharm.D, Agriculture.
+- **Top Colleges**: COEP Pune, VJTI Mumbai, ICT Mumbai, SPIT Mumbai, MIT-WPU Pune.
+
+### 🔗 Official Links
+- [State CET Cell Maharashtra](https://cetcell.mahacet.org)`;
+    }
+
+    // 7. GATE (Graduate Aptitude Test in Engineering)
+    if (q.includes("gate")) {
+      return `### 📌 Exam Overview: GATE 2026 (Graduate Aptitude Test in Engineering)
+- **Conducting Body**: IISc Bengaluru & 7 IITs on rotation
+- **Exam Mode**: Computer Based Test (CBT)
+- **Duration**: 3 Hours (180 minutes)
+
+### 📝 Structure & Marking Scheme
+- **65 Questions**: General Aptitude (15 Marks) + Engineering Mathematics (13 Marks) + Core Discipline (72 Marks). Total 100 Marks.
+- **Question Types**: MCQs (+1/-0.33 or +2/-0.66), MSQs (Multiple Select), NAT (Numerical Answer Type).
+
+### 🎓 Eligibility & Outcomes
+- **Eligibility**: 3rd year UG students or Graduates in Engineering/Technology/Architecture/Science.
+- **Career Scope**: M.Tech / Ph.D in IITs/IISc, PSU Recruitment (ONGC, IOCL, NTPC, BHEL, DRDO, ISRO) with high starting pay scales.
+
+### 🔗 Official Links
+- [GATE Official Portal](https://gate2026.iisc.ac.in)`;
+    }
+
+    // 8. General Dynamic Search Fallback for ANY entered exam name
+    const formattedTitle = query.toUpperCase();
+    return `### 📌 Exam Overview: ${formattedTitle} 2026 Intelligence
+- **Target Examination**: ${query}
+- **Examination Category**: Higher Education & Professional Entrance Test
+- **Mode of Exam**: Computer Based Test (CBT) / Written Entrance Exam
+- **Frequency & Duration**: Annual / Bi-annual Test | 2 to 3 Hours Duration
+
+### 📝 Structure & Marking Scheme
+- **Test Paper Format**: Multiple Choice Questions (MCQs) and Subjective / Numerical section papers.
+- **Sectional Distribution**: Core Domain Knowledge, General Aptitude, Reasoning, and Quantitative Analysis.
+- **Marking Scheme**: Standard positive marking scheme with candidate instructions on negative marking.
+
+### 🎓 Comprehensive Eligibility & Syllabus Overview
+- **Eligibility Requirements**: Passed or appearing in qualifying examination (Class 10, Class 12, or Bachelor's Degree) with required minimum aggregate percentage.
+- **Syllabus Mapping**: Core subjects based on prescribed state/national academic curriculum standards.
+
+### 📅 Expected 2026 Schedule & Fees
+- **Notification & Registration**: Official application opens 2 to 3 months prior to test dates.
+- **Admit Card & Exam**: Released 1-2 weeks prior to scheduled test sessions.
+- **Category Application Fees**: Category concessions available for SC/ST/PwD/Female candidates upon valid certificate upload.
+
+### 📁 Application Process & Required Document Checklist
+1. Visit the official examination portal and register with a valid email ID and mobile number.
+2. Complete candidate profile details, educational history, and exam center choices.
+3. Upload passport photograph (white background), signature scan, and category certificates.
+4. Complete fee payment online and retain a printed copy of the confirmation receipt.
+
+### 🚀 Courses Unlocked & Career Scope
+- Unlocks admissions to top accredited government, state, and private universities and institutes.
+- Opens high-growth professional avenues in engineering, medicine, management, public sector, and research.
+
+### 💡 Counselor Preparation Advice
+- Analyze previous 5 years' question papers, identify high-weightage topics, and take timed mock tests to build speed and accuracy.
+
+### 🔗 Official Web Portals
+- [National & State Higher Education Admissions Portal](https://www.education.gov.in)
+- [NTA Testing Agency Hub](https://nta.ac.in)`;
+  }
+
+  // API endpoint for Comprehensive Entrance Exams Intelligence powered by Gemini AI with Search Grounding
+  app.post("/api/entrance-exams-info", async (req, res) => {
+    const { examQuery, lang } = req.body || {};
+    const query = (examQuery || "JEE Main").trim();
+    const activeLang = (lang || 'en').toLowerCase();
+    const langNames: Record<string, string> = { te: "Telugu", hi: "Hindi", ta: "Tamil", en: "English" };
+    const targetLangName = langNames[activeLang] || "English";
+
+    try {
+      if (!ai) {
+        return res.json({
+          source: "fallback",
+          query: query,
+          answer: generateSmartExamFallbackReport(query, targetLangName),
+          citations: [
+            { title: "NTA Official Testing Portal", url: "https://nta.ac.in" },
+            { title: "Ministry of Education India", url: "https://www.education.gov.in" }
+          ]
+        });
+      }
+
+      const prompt = `You are the DIRPA Expert Academic Counselor specializing in Competitive & Entrance Examinations in India and Globally.
+Provide a comprehensive, end-to-end, master intelligence report for the entrance exam: "${query}".
+
+Required Language: Provide all explanations and content in ${targetLangName} (if language is not English, translate appropriately while keeping proper technical terms/exam names recognizable).
+
+Please organize your output in markdown with clear, structured sections covering:
+1. **Exam Overview & Basic Details**: Full Form, Conducting Body (e.g. NTA, IIMs, UPSC, etc.), Frequency, Mode of Exam (CBT/Offline), Duration, Language medium options.
+2. **How the Exam is / Structure & Format**: Question types (MCQs, Numerical, Descriptive), Sectional breakdown, Marking scheme (positive marks, negative marking rules), Total marks, Pass cutoffs.
+3. **Comprehensive Exam Information & Eligibility**: Eligibility criteria (qualifying degree, minimum percentage, age limit, allowed attempts), detailed syllabus overview by core subjects/topics.
+4. **Expected Dates for 2026 & Application Fees**: 
+   - Application registration window (start and deadline)
+   - Admit card release & Expected Exam Dates for 2026
+   - Result & Counseling timeline
+   - Category-wise Application Fees (General/OBC, Female, SC/ST/PwD, NRI/International).
+5. **Application Process & Documents Required**:
+   - Step-by-step candidate registration guide (Portal visit -> Form filling -> Photo/Doc upload -> Online payment -> Confirmation receipt).
+   - Complete checklist of mandatory documents required during registration & counseling (Photograph specifications, signature, Class 10/12 marksheets, Category certificate, Govt ID proof like Aadhaar).
+6. **What Courses & Career Opportunities Can I Do? (Use of writing the exam)**:
+   - Specific degree courses unlocked (e.g., B.Tech, MBBS, MBA, BA LLB, Officer Cadets, etc.).
+   - Top accepting colleges & universities (IITs, NITs, AIIMS, NLUs, IIMs, Central Universities, etc.).
+   - Career paths, high-growth job roles, average starting salary packages, higher research opportunities.
+7. **Preparation Tips & Alumni Advice**: Practical strategies, recommended study material, mock test practice frequency, time management advice.
+8. **Official Portals & Direct Links**: Official website URL, Candidate Registration Portal, Helpdesk contact details.
+
+Make sure the information is accurate, structured, and easy to read.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: `You are DIRPA's competitive entrance exam expert counselor. Provide accurate, modern 2026 exam details in ${targetLangName}. Search the web for up-to-date fees, dates, and official URLs.`,
+          tools: [{ googleSearch: {} }]
+        }
+      });
+
+      const responseText = response.text;
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      const citations = chunks
+        .map((c: any) => ({
+          title: c.web?.title || "Official Reference",
+          url: c.web?.uri || ""
+        }))
+        .filter((c: any) => c.url);
+
+      return res.json({
+        source: "gemini_grounding",
+        query: query,
+        answer: responseText,
+        citations: citations
+      });
+    } catch (err: any) {
+      console.warn("Gemini Entrance Exam API rate limit/error fallback activated:", err?.message || err);
+      // Fallback gracefully on 429 quota or network errors
+      return res.json({
+        source: "fallback_generated",
+        query: query,
+        answer: generateSmartExamFallbackReport(query, targetLangName),
+        citations: [
+          { title: "NTA Entrance Exam Portal", url: "https://nta.ac.in" },
+          { title: "National Education Information Hub", url: "https://www.education.gov.in" }
+        ]
+      });
+    }
+  });
+
+  // Dynamic Translation Endpoint for user-generated content (comments, forum posts, reviews)
+  app.post("/api/translate", async (req, res) => {
+    try {
+      const { text, targetLang } = req.body;
+      if (!text || !targetLang) {
+        return res.status(400).json({ error: "Missing text or targetLang parameter" });
+      }
+
+      const langNames: Record<string, string> = {
+        te: "Telugu (తెలుగు)",
+        hi: "Hindi (हिन्दी)",
+        ta: "Tamil (தமிழ்)",
+        en: "English"
+      };
+      const targetLangName = langNames[targetLang] || targetLang;
+
+      if (!ai) {
+        return res.json({ translatedText: text, targetLang, note: "AI client not configured" });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: `Translate the following student or alumni comment accurately into ${targetLangName}. Preserve technical academic/course terms where appropriate. Return ONLY the translated text string without commentary or markdown codeblocks:
+"${text}"`,
+        config: {
+          systemInstruction: `You are an expert translator specializing in Indian languages (${targetLangName}). Provide direct, fluent, accurate translations.`
+        }
+      });
+
+      const translatedText = response.text?.trim() || text;
+      res.json({ translatedText, targetLang });
+    } catch (err: any) {
+      console.error("Translation API error:", err);
+      res.status(500).json({ error: "Failed to translate text" });
     }
   });
 

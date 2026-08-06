@@ -8,14 +8,14 @@ export interface CustomIllustration {
 }
 
 export const CUSTOM_ILLUSTRATIONS: CustomIllustration[] = [
-  // --- ANIMAL ILLUSTRATIONS (illustration1 - illustration9) ---
+  // --- ANIMAL & CHARACTER ILLUSTRATIONS (illustration1 - illustration9) ---
   {
     id: 'illustration1',
     name: 'Panda in Green Sweater',
     type: 'illustration',
     badge: '🐼 Panda',
     description: '3D Panda character wearing a cozy green knitted sweater',
-    url: '/illustrations/illustration1.png'
+    url: '/illustrations/illustrations (1).png'
   },
   {
     id: 'illustration2',
@@ -23,7 +23,7 @@ export const CUSTOM_ILLUSTRATIONS: CustomIllustration[] = [
     type: 'illustration',
     badge: '🐱 Suit Cat',
     description: 'Professional tabby cat wearing a formal suit and tie',
-    url: '/illustrations/illustration2.png'
+    url: '/illustrations/illustrations (2).png'
   },
   {
     id: 'illustration3',
@@ -31,7 +31,7 @@ export const CUSTOM_ILLUSTRATIONS: CustomIllustration[] = [
     type: 'illustration',
     badge: '🐶 Golden Pup',
     description: 'Happy Golden Retriever wearing a stylish yellow beanie',
-    url: '/illustrations/illustration3.png'
+    url: '/illustrations/illustration (3).png'
   },
   {
     id: 'illustration4',
